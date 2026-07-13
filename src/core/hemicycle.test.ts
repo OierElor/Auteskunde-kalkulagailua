@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { layoutHemicycle } from './hemicycle';
+import { heroLayout, heroTextExtent, layoutHemicycle } from './hemicycle';
 
 describe('hemizikloaren geometria', () => {
   it('eserleku guztiak kokatzen ditu, kopurua edozein dela ere', () => {
@@ -46,5 +46,48 @@ describe('hemizikloaren geometria', () => {
 
   it('eserleku gehiagok errenkada gehiago dakartza', () => {
     expect(layoutHemicycle(9).rows).toBeLessThan(layoutHemicycle(350).rows);
+  });
+});
+
+describe('erdiko zenbakia ez da eserlekuen gainera ateratzen', () => {
+  // Hau akats erreal bat izan zen: "75" barruko errenkada estaltzen zuen. Neurriak eskuz jarrita
+  // zeuden; orain zuloaren proportzio gisa kalkulatzen dira, eta proba honek zaintzen du.
+
+  it('testua zuloaren barruan geratzen da, ganbera edozein dela ere', () => {
+    // Eserleku 1eko ganberak bolatxo erraldoi bakarra du eta zuloa jaten dio: hor hasi zen akatsa.
+    for (const seats of [1, 2, 5, 9, 25, 75, 100, 123, 150, 350, 400, 751, 1000]) {
+      const { innerRadius, seatRadius } = layoutHemicycle(seats);
+      const digits = String(seats).length;
+      const hero = heroLayout(innerRadius, seatRadius, digits);
+
+      // Etiketarik luzeenarekin neurtzen dugu beti ("koalizioan"), letra-tamainak jauzirik egin ez dezan.
+      const extent = heroTextExtent(hero, digits, 10);
+
+      // Barruko eserlekuak `innerRadius` erradioan daude eta `seatRadius` lodi dira: beraz zirkuluen
+      // barruko ertza `innerRadius - seatRadius`-en dago. Testuak hor sartu behar du.
+      const limit = innerRadius - seatRadius;
+      expect(
+        extent,
+        `${seats} eserleku: testua ${extent.toFixed(1)}, muga ${limit.toFixed(1)}`,
+      ).toBeLessThanOrEqual(limit);
+    }
+  });
+
+  it('koalizio bat hautatzeak ez du letra-tamaina aldatzen', () => {
+    // Koalizioaren zenbakia beti da guztizkoa baino txikiagoa, beraz digitu berdinak edo gutxiago
+    // ditu: neurria guztizkoarekin kalkulatuta, egonkorra da.
+    const { innerRadius, seatRadius } = layoutHemicycle(75);
+    const hero = heroLayout(innerRadius, seatRadius, 2);
+    expect(heroTextExtent(hero, 1, 10)).toBeLessThanOrEqual(heroTextExtent(hero, 2, 10));
+  });
+
+  it('bolatxoak ez dira neurriz kanpo hazten ganbera txikietan', () => {
+    // Muga hau gabe, eserleku 1eko ganberak 21,8ko erradioa zuen (75ekoak 5,5 duen bitartean):
+    // bolatxo erraldoi bakar batek zuloa jaten zuen.
+    for (const seats of [1, 2, 5, 9]) {
+      expect(layoutHemicycle(seats).seatRadius, `${seats}`).toBeLessThanOrEqual(12);
+    }
+    // Ganbera normaletan mugak ez du eraginik: tarteak berak zehazten du tamaina.
+    expect(layoutHemicycle(75).seatRadius).toBeLessThan(8);
   });
 });

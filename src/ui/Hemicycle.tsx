@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { layoutHemicycle } from '../core/hemicycle';
+import { heroLayout, layoutHemicycle } from '../core/hemicycle';
 import { majorityThreshold } from '../core/coalitions';
 import type { Party, PartyId } from '../core/types';
 import { formatInt } from './theme';
@@ -20,6 +20,12 @@ export function Hemicycle({ parties, totals, paint, coalition, onToggleParty }: 
   const majority = majorityThreshold(totalSeats);
 
   const layout = useMemo(() => layoutHemicycle(totalSeats), [totalSeats]);
+  // Digituak GUZTIZKOTIK: koalizioaren zenbakia beti txikiagoa da, beraz tamaina egonkor mantentzen
+  // da alderdiak hautatzean.
+  const hero = useMemo(
+    () => heroLayout(layout.innerRadius, layout.seatRadius, String(totalSeats).length),
+    [layout.innerRadius, layout.seatRadius, totalSeats],
+  );
 
   /** Eserlekuak ezkerretik eskuinera betetzen dira, alderdiak ardatz politikoan ordenatuta. */
   const seated = useMemo(() => {
@@ -105,23 +111,25 @@ export function Hemicycle({ parties, totals, paint, coalition, onToggleParty }: 
           );
         })}
 
+        {/* Neurriak zuloaren espazio erabilgarritik datoz: bestela zenbakia eserlekuen gainera
+            ateratzen da. Etiketa laburra da nahita — luzeagoa behean doa, HTMLan. */}
         <text
           x={0}
-          y={-layout.innerRadius / 2}
+          y={hero.valueY}
           textAnchor="middle"
           fill="var(--ink)"
-          style={{ fontSize: 26, fontWeight: 700 }}
+          style={{ fontSize: hero.valueFontSize, fontWeight: 700 }}
         >
           {formatInt(dimming ? coalitionSeats : totalSeats)}
         </text>
         <text
           x={0}
-          y={-layout.innerRadius / 2 + 13}
+          y={hero.labelY}
           textAnchor="middle"
           fill="var(--ink-muted)"
-          style={{ fontSize: 8.5 }}
+          style={{ fontSize: hero.labelFontSize }}
         >
-          {dimming ? `koalizioa · ${majority} behar` : 'eserleku'}
+          {dimming ? 'koalizioan' : 'eserleku'}
         </text>
       </svg>
 
