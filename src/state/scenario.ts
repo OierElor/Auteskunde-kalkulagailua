@@ -7,6 +7,7 @@ import { DEFAULT_TRANSFER_CONFIG, cellKey } from '../core/transfers';
 import type { TransferConfig } from '../core/transfers';
 import type { District, MethodId, Party, PartyId, Scenario, ThresholdConfig } from '../core/types';
 import { DEFAULT_SCENARIO, EXAMPLES } from '../data/examples';
+import { applyKnownParties } from '../data/knownParties';
 
 interface Snapshot {
   scenario: Scenario;
@@ -104,7 +105,11 @@ export const useApp = create<AppState>((set, get) => {
 
     importCsv: (text) => {
       // Akatsak deitzaileak harrapatzen ditu: hark daki nola erakutsi erabiltzaileari.
-      const scenario = csvToScenario(text, get().scenario);
+      //
+      // `applyKnownParties`: datu ofizialetan izenak luzeak dira eta CSVak ez du kolorerik ez
+      // ezker-eskuin posiziorik garraiatzen. Alderdi ezagunei beren laburdura, marka-kolorea eta
+      // posizioa ematen dizkiegu, bestela hemizikloa zutabe-ordenan marraztuko litzateke.
+      const scenario = applyKnownParties(csvToScenario(text, get().scenario));
       lastTag = null;
       commit('csv', () => ({ scenario }));
       set({ coalition: [] });

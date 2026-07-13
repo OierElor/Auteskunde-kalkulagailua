@@ -10,9 +10,9 @@ export function CsvPanel() {
 
   const current = scenarioToCsv(scenario);
 
-  function handleImport() {
+  function apply(content: string) {
     try {
-      importCsv(text);
+      importCsv(content);
       setError(null);
       setOk(true);
       setTimeout(() => setOk(false), 2500);
@@ -20,6 +20,17 @@ export function CsvPanel() {
       setError(e instanceof Error ? e.message : String(e));
       setOk(false);
     }
+  }
+
+  function handleImport() {
+    apply(text);
+  }
+
+  async function handleFile(file: File | undefined) {
+    if (!file) return;
+    const content = await file.text();
+    setText(content);
+    apply(content);
   }
 
   function download() {
@@ -36,10 +47,32 @@ export function CsvPanel() {
     <div className="stack" style={{ gap: 16 }}>
       <div className="card stack">
         <h3>Zure datuak kargatu</h3>
+
+        <div className="banner">
+          <span aria-hidden>📁</span>
+          <div>
+            <strong>Benetako hauteskundeak</strong> <code>datuak/</code> karpetan daude: Eusko
+            Legebiltzarra (2024, 2020, 2016), Espainiako Kongresua 2023, Nafarroa 2023 eta Europako
+            Parlamentua 2024 — datu ofizialak. Arau legalak (langa, metodoa){' '}
+            <code>datuak/README.md</code>-n.
+          </div>
+        </div>
+
+        <label className="row" style={{ gap: 8 }}>
+          <span style={{ fontSize: '0.85rem' }}>Fitxategia kargatu:</span>
+          <input
+            type="file"
+            accept=".csv,text/csv,text/plain"
+            onChange={(e) => handleFile(e.target.files?.[0])}
+            aria-label="CSV fitxategia kargatu"
+            style={{ fontSize: '0.8rem' }}
+          />
+        </label>
+
         <p className="hint" style={{ marginTop: 0 }}>
-          Lehen zutabea barrutia, bigarrena eserlekuak, gainerakoak alderdiak. <code>Zuriak</code>{' '}
-          izeneko zutabea boto zuritzat hartzen da. Bereizlea (<code>;</code> edo <code>,</code>) eta
-          milakoen puntuak automatikoki antzematen dira.
+          …edo itsatsi behean. Lehen zutabea barrutia, bigarrena eserlekuak, gainerakoak alderdiak.{' '}
+          <code>Zuriak</code> izeneko zutabea boto zuritzat hartzen da. Bereizlea (<code>;</code> edo{' '}
+          <code>,</code>) eta milakoen puntuak automatikoki antzematen dira.
         </p>
 
         <pre
