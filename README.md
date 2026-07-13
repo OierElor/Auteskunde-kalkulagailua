@@ -151,6 +151,44 @@ Araba;25;62.000;51.000;38.000;1.200
 Bereizlea (`;` edo `,`) eta milakoen puntuak automatikoki antzematen dira. `Zuriak` zutabea boto
 zuritzat hartzen da, ez alderdi gisa.
 
+## Segurtasuna
+
+Ezin da bermatu inoiz zaurgarritasunik ez dela agertuko: `npm audit`-ek **argitaratutako** abisuak
+bakarrik ezagutzen ditu, eta bihar norbaitek gaur garbi dagoen paketean akats bat aurki dezake.
+Bermatu daitekeena **erasotzeko azalera** da, eta hemen txikia da.
+
+```bash
+npm run audit        # dena (garapena barne)
+npm run audit:prod   # ARGITARATZEN DENA bakarrik — hau da inporta duena
+```
+
+**Bereizketa gakoa:** `devDependencies`-eko zaurgarritasun batek ez du zure aplikazioa ukitzen.
+`dist/` karpetak ez darama horietako bat ere. `npm audit`-ek 5 arazo erakuts ditzake eta
+`npm audit --omit=dev`-ek 0 — eta orduan argitaratzen duzuna seguru dago.
+
+Aplikazio honen azalera, egiaztatuta:
+
+| | |
+|---|---|
+| Produkzioko paketeak | **9** (React, React-DOM, Zustand + 3 menpekotasun) |
+| `eval` / `innerHTML` / `dangerouslySetInnerHTML` | **bat ere ez** |
+| `fetch` / XHR / WebSocket | **bat ere ez** — aplikazioak ez du sarera hitz egiten |
+| Kanpoko baliabideak (CDN, letra-tipoak…) | **bat ere ez** |
+| Nabigatzailean gordetzen dena | gaia bakarrik (`light`/`dark`) |
+| Dev zerbitzaria | `localhost` bakarrik, ez sarera irekita |
+
+Kanpoko sarrera bakarra CSVa da: zenbaki eta testu bihurtzen da, eta React-ek automatikoki ihes
+egiten dio. Ez dago kode-injekziorako biderik.
+
+**Ohitura bakarra:** `npm install` egin ondoren, `npm run audit`. Bi segundo. GitHubera igotzen
+baduzu, Dependabot-ek automatikoki abisatuko dizu.
+
+### Bertsioak
+
+Vite 7 + Vitest 3 + plugin-react 5 erabiltzen dira, eta ez Vite 8, Node 20.19-rekin bateragarriak
+diren azkenak direlako. `npm audit fix --force` erabiltzeak Vite 8ra jauzi egingo luke eta katea
+hautsi — ez erabili egiaztatu gabe.
+
 ## Egoera
 
 Lau faseak osatuta. Sei sistema elektoral, hamar banaketa-metodo, hiru zerrenda-mota.
