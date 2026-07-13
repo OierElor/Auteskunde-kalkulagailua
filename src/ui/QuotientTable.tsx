@@ -115,10 +115,15 @@ export function QuotientTable({ scenario, result, paint }: Props) {
     );
   }
 
+  // Osagai hau sistema proportzionaletarako baino ez da erabiltzen, baina batasun diskriminatuak
+  // hori frogatzea eskatzen du: sistema maioritarioek beste xehetasun-mota bat dute.
+  const detail = allocation.detail;
+  if (detail.kind !== 'divisor') return null;
+
   const grid = quotientGrid(
     Object.fromEntries(eligible.map((p) => [p.id, partyVotes(scenario, district.id, p.id)])),
     district.seats,
-    allocation.detail.method,
+    detail.method,
     eligible.map((p) => p.id),
     seats,
     Math.min(district.seats, 14),
@@ -126,7 +131,7 @@ export function QuotientTable({ scenario, result, paint }: Props) {
 
   // Zenbatgarren eserlekua eman duen zatidura bakoitzak: sareta irakurgarri egiten duena.
   const order = new Map(
-    allocation.detail.steps.map((s) => [`${s.partyId}:${s.seatForParty}`, s.seatNumber]),
+    detail.steps.map((s) => [`${s.partyId}:${s.seatForParty}`, s.seatNumber]),
   );
 
   return (

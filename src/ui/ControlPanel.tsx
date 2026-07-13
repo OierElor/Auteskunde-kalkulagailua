@@ -1,21 +1,32 @@
 import { DIVISOR_METHODS } from '../core/divisors';
 import { QUOTA_METHODS } from '../core/quotas';
-import { SYSTEMS } from '../core/systems';
+import { SYSTEMS, systemSpec } from '../core/systems';
 import type { DivisorMethodId, MethodId, QuotaMethodId } from '../core/types';
 import { useApp } from '../state/scenario';
 import { EXAMPLES } from '../data/examples';
 import { formatInt } from './theme';
 
 export function ControlPanel() {
-  const { scenario, config, setSystem, setMethod, setThreshold, scaleAllSeats, loadExample } =
-    useApp();
+  const {
+    scenario,
+    config,
+    setSystem,
+    setMethod,
+    setThreshold,
+    setRunoff,
+    scaleAllSeats,
+    loadExample,
+  } = useApp();
 
   const totalSeats = scenario.districts.reduce((sum, d) => sum + d.seats, 0);
+  const spec = systemSpec(config.system);
   const method = config.method;
   const methodSpec =
     method in DIVISOR_METHODS
       ? DIVISOR_METHODS[method as DivisorMethodId]
       : QUOTA_METHODS[method as QuotaMethodId];
+
+  const uninominal = scenario.districts.every((d) => d.seats === 1);
 
   return (
     <>
@@ -52,76 +63,136 @@ export function ControlPanel() {
             </option>
           ))}
         </select>
-        <p className="hint">{SYSTEMS.find((s) => s.id === config.system)?.description}</p>
+        <p className="hint">{spec.description}</p>
+
+        {!spec.proportional && !uninominal && (
+          <div className="banner alert">
+            <span aria-hidden>⚠</span>
+            <div>
+              Sistema maioritarioa <strong>barruti uninominaletarako</strong> da, baina barruti
+              hauek eserleku bat baino gehiago dute: irabazleak <strong>denak</strong> hartzen ditu.
+              Kargatu <em>75 barruti uninominal</em> adibidea emaitza esanguratsua ikusteko.
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="card stack">
-        <h3>Banaketa-metodoa</h3>
-        <select
-          value={method}
-          onChange={(e) => setMethod(e.target.value as MethodId)}
-          aria-label="Banaketa-metodoa"
-        >
-          <optgroup label="Zatitzaileak">
-            {Object.values(DIVISOR_METHODS).map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name} ({m.sequence})
-              </option>
-            ))}
-          </optgroup>
-          <optgroup label="Kuotak (hondar handiena)">
-            {Object.values(QUOTA_METHODS).map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name} — {m.formula}
-              </option>
-            ))}
-          </optgroup>
-        </select>
-        <p className="hint">{methodSpec.description}</p>
-      </div>
+      {spec.proportional ? (
+        <>
+          <div className="card stack">
+            <h3>Banaketa-metodoa</h3>
+            <select
+              value={method}
+              onChange={(e) => setMethod(e.target.value as MethodId)}
+              aria-label="Banaketa-metodoa"
+            >
+              <optgroup label="Zatitzaileak">
+                {Object.values(DIVISOR_METHODS).map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} ({m.sequence})
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Kuotak (hondar handiena)">
+                {Object.values(QUOTA_METHODS).map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} — {m.formula}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+            <p className="hint">{methodSpec.description}</p>
+          </div>
 
-      <div className="card stack">
-        <h3>Barrera elektorala</h3>
-        <div className="spread">
-          <input
-            type="range"
-            min={0}
-            max={15}
-            step={0.1}
-            value={config.threshold.percent}
-            onChange={(e) => setThreshold({ percent: Number(e.target.value) })}
-            aria-label="Langaren ehunekoa"
-          />
-          <span className="value" style={{ minWidth: 48, textAlign: 'right' }}>
-            %{config.threshold.percent.toFixed(1)}
-          </span>
+          <div className="card stack">
+            <h3>Barrera elektorala</h3>
+            <div className="spread">
+              <input
+                type="range"
+                min={0}
+                max={15}
+                step={0.1}
+                value={config.threshold.percent}
+                onChange={(e) => setThreshold({ percent: Number(e.target.value) })}
+                aria-label="Langaren ehunekoa"
+              />
+              <span className="value" style={{ minWidth: 48, textAlign: 'right' }}>
+                %{config.threshold.percent.toFixed(1)}
+              </span>
+            </div>
+
+            <select
+              value={config.threshold.scope}
+              onChange={(e) => setThreshold({ scope: e.target.value as 'district' | 'national' })}
+              aria-label="Langaren esparrua"
+            >
+              <option value="district">Barruti bakoitzean aplikatu</option>
+              <option value="national">Estatu mailan aplikatu</option>
+            </select>
+
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={config.threshold.includeBlank}
+                onChange={(e) => setThreshold({ includeBlank: e.target.checked })}
+              />
+              <span>
+                Boto zuriak izendatzailean sartu
+                <br />
+                <span className="hint">
+                  Espainiako eta Euskadiko legeak bai: boto zuriak baliodunak dira, eta langa
+                  altxatzen dute alderdi txikientzat.
+                </span>
+              </span>
+            </label>
+          </div>
+        </>
+      ) : (
+        <div className="card stack">
+          <h3>Langa eta metodoa</h3>
+          <p className="hint" style={{ margin: 0 }}>
+            Sistema maioritarioek <strong>ez dute langarik ez banaketa-metodorik</strong>. Boto
+            gehien dituenak barrutia irabazten du, %2 baino ez badu ere. Barrutiaren tamaina bera da
+            langa —eta askoz gogorragoa.
+          </p>
         </div>
+      )}
 
-        <select
-          value={config.threshold.scope}
-          onChange={(e) => setThreshold({ scope: e.target.value as 'district' | 'national' })}
-          aria-label="Langaren esparrua"
-        >
-          <option value="district">Barruti bakoitzean aplikatu</option>
-          <option value="national">Estatu mailan aplikatu</option>
-        </select>
+      {config.system === 'two-round' && (
+        <div className="card stack">
+          <h3>Bigarren itzulia</h3>
+          <select
+            value={config.runoff.rule}
+            onChange={(e) => setRunoff({ rule: e.target.value as 'top-two' | 'qualify' })}
+            aria-label="Bigarren itzuliko erregela"
+          >
+            <option value="top-two">Bi onenak pasatzen dira</option>
+            <option value="qualify">Ehuneko bat gainditzen dutenak (Frantzia)</option>
+          </select>
 
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={config.threshold.includeBlank}
-            onChange={(e) => setThreshold({ includeBlank: e.target.checked })}
-          />
-          <span>
-            Boto zuriak izendatzailean sartu
-            <br />
-            <span className="hint">
-              Espainiako eta Euskadiko legeak bai: boto zuriak baliodunak dira, eta langa altxatzen
-              dute alderdi txikientzat.
-            </span>
-          </span>
-        </label>
-      </div>
+          {config.runoff.rule === 'qualify' && (
+            <div className="spread">
+              <input
+                type="range"
+                min={5}
+                max={30}
+                step={0.5}
+                value={config.runoff.qualifyPercent}
+                onChange={(e) => setRunoff({ qualifyPercent: Number(e.target.value) })}
+                aria-label="Bigarren itzulirako gutxieneko ehunekoa"
+              />
+              <span className="value" style={{ minWidth: 48, textAlign: 'right' }}>
+                %{config.runoff.qualifyPercent.toFixed(1)}
+              </span>
+            </div>
+          )}
+
+          <p className="hint">
+            Hiru edo lau alderdi pasa daitezke ehunekoaren erregelarekin (<em>triangulaire</em>).
+            Bigarren itzuliko botoak <strong>Transferentziak</strong> fitxan doitzen dira.
+          </p>
+        </div>
+      )}
 
       <div className="card stack">
         <h3>Eserlekuak guztira</h3>

@@ -3,7 +3,12 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import App from './App';
 import { useApp } from './state/scenario';
-import { DEFAULT_SCENARIO, SINGLE_DISTRICT_SCENARIO } from './data/examples';
+import { DEFAULT_SYSTEM_CONFIG } from './core/systems';
+import {
+  DEFAULT_SCENARIO,
+  SINGLE_DISTRICT_SCENARIO,
+  SINGLE_MEMBER_SCENARIO,
+} from './data/examples';
 
 /**
  * Muntatze-proba. Proba unitarioek motorra egiaztatzen dute, baina ez dute frogatzen APLIKAZIOA
@@ -16,11 +21,7 @@ const seatCircles = (container: HTMLElement) => container.querySelectorAll('svg 
 beforeEach(() => {
   useApp.setState({
     scenario: DEFAULT_SCENARIO,
-    config: {
-      system: 'list-pr',
-      method: 'dhondt',
-      threshold: { percent: 3, scope: 'district', includeBlank: true },
-    },
+    config: DEFAULT_SYSTEM_CONFIG,
     coalition: [],
     past: [],
     future: [],
@@ -111,6 +112,99 @@ describe('koalizioak', () => {
     expect(within(row).getByText('koalizioan')).toBeInTheDocument();
     // Eta koalizioaren kontagailuak alderdiaren eserlekuak erakusten ditu.
     expect(screen.getByText(new RegExp(`^${seats} / \\d+ eserleku$`))).toBeInTheDocument();
+  });
+});
+
+describe('sistema maioritarioak (2. fasea)', () => {
+  const seatsOf = (name: string) =>
+    Number(
+      within(screen.getAllByText(name)[0].closest('tr')!).getAllByRole('cell')[3].textContent,
+    );
+
+  const selectSystem = (value: string) =>
+    fireEvent.change(screen.getByLabelText('Sistema elektorala'), { target: { value } });
+
+  it('FPTPra aldatzeak emaitza guztiz aldatzen du eserleku kopurua mantenduz', () => {
+    // 3 barruti × 25 eserleku. Proportzionalean sei alderdik dute ordezkaritza.
+    const { container } = render(<App />);
+    expect(seatsOf('Alderdi Gorria')).toBeGreaterThan(0);
+
+    selectSystem('fptp');
+
+    // FPTPn barrutiko irabazleak DENAK hartzen ditu: Urdinak, botoen %30ekin, legebiltzarraren
+    // bi heren. Beste guztiak zeroan. Baina 75 eserlekuak banatuta jarraitzen dute.
+    expect(seatsOf('Alderdi Urdina')).toBe(50);
+    expect(seatsOf('Alderdi Gorria')).toBe(0);
+    expect(container.querySelectorAll('svg circle')).toHaveLength(75);
+  });
+
+  it('barruti uninominaletan FPTP eta D\'Hondt BERDINAK dira — eta hori UI-an ikusten da', () => {
+    // Ez da akats bat: eserleku BAKARRA dagoenean, zatidurarik handiena boto gehien dituenarena da.
+    // "Proportzionala" hitzak ez du esan nahi ezer barruti uninominal batean.
+    useApp.setState({ scenario: SINGLE_MEMBER_SCENARIO });
+    render(<App />);
+
+    const prSeats = SINGLE_MEMBER_SCENARIO.parties.map((p) => seatsOf(p.name));
+    selectSystem('fptp');
+    const fptpSeats = SINGLE_MEMBER_SCENARIO.parties.map((p) => seatsOf(p.name));
+
+    expect(fptpSeats).toEqual(prSeats);
+  });
+
+  it('sistema maioritarioan langa eta metodoa desagertzen dira', () => {
+    useApp.setState({ scenario: SINGLE_MEMBER_SCENARIO });
+    render(<App />);
+
+    expect(screen.getByLabelText('Banaketa-metodoa')).toBeInTheDocument();
+    selectSystem('fptp');
+
+    expect(screen.queryByLabelText('Banaketa-metodoa')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Langaren ehunekoa')).not.toBeInTheDocument();
+    expect(screen.getByText(/ez dute langarik ez banaketa-metodorik/i)).toBeInTheDocument();
+  });
+
+  it('barruti anitzeko eszenatokian FPTPk abisatzen du: irabazleak denak hartzen ditu', () => {
+    render(<App />); // DEFAULT_SCENARIO: 3 barruti × 25 eserleku
+    selectSystem('fptp');
+    expect(screen.getAllByText(/general ticket/i).length).toBeGreaterThan(0);
+  });
+
+  it('bi itzulik transferentzien fitxa erakusten du, eta matrizea editagarria da', () => {
+    useApp.setState({ scenario: SINGLE_MEMBER_SCENARIO });
+    render(<App />);
+
+    expect(screen.queryByRole('tab', { name: 'Transferentziak' })).not.toBeInTheDocument();
+    selectSystem('two-round');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Transferentziak' }));
+    expect(screen.getByLabelText('Alderdi Moreatik Alderdi Berdeara')).toBeInTheDocument();
+    expect(screen.getByText(/ez daude datuetan/i)).toBeInTheDocument();
+  });
+
+  it('transferentzia-matrizea aldatzeak emaitza aldatzen du', () => {
+    useApp.setState({ scenario: SINGLE_MEMBER_SCENARIO });
+    render(<App />);
+    selectSystem('two-round');
+
+    const before = seatsOf('Alderdi Gorria');
+
+    // Abstentzioa %0ra: transferentzia gehiago iristen dira, eta emaitzak mugitzen dira.
+    fireEvent.click(screen.getByRole('tab', { name: 'Transferentziak' }));
+    fireEvent.change(screen.getByLabelText('Hurbiltasunaren zorroztasuna'), {
+      target: { value: '80' },
+    });
+
+    expect(seatsOf('Alderdi Gorria')).not.toBe(before);
+  });
+
+  it('barrutien taulak irabazlea erakusten du barrutiz barruti', () => {
+    useApp.setState({ scenario: SINGLE_MEMBER_SCENARIO });
+    render(<App />);
+    selectSystem('fptp');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Barrutiak' }));
+    expect(screen.getByRole('columnheader', { name: 'Irabazlea' })).toBeInTheDocument();
+    expect(screen.getByText('1. barrutia')).toBeInTheDocument();
   });
 });
 

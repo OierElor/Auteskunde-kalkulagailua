@@ -100,7 +100,39 @@ export interface QuotaDetail {
   tiedWith: PartyId[];
 }
 
-export type AllocationDetail = DivisorDetail | QuotaDetail;
+/** Sistema maioritarioa: boto gehien dituenak barrutia irabazten du. */
+export interface PluralityDetail {
+  kind: 'plurality';
+  winner: PartyId | null;
+  votes: Record<PartyId, number>;
+  /** Bigarren geratu denarekiko aldea, botoetan. Txikia bada, barrutia "eztabaidatua" da. */
+  margin: number;
+  winnerPercent: number;
+}
+
+export interface TransferFlow {
+  from: PartyId;
+  to: PartyId;
+  votes: number;
+}
+
+/** Bi itzuliko sistema. Bigarren itzuliko botoak transferentzia-matrizetik ondorioztatzen dira. */
+export interface RunoffDetail {
+  kind: 'runoff';
+  /** Norbaitek %50 gainditu du lehen itzulian: ez da bigarrenik egon. */
+  decidedInFirstRound: boolean;
+  firstRound: Record<PartyId, number>;
+  qualified: PartyId[];
+  eliminated: PartyId[];
+  secondRound: Record<PartyId, number>;
+  transfers: TransferFlow[];
+  /** Bigarren itzulian etxean geratu diren botoak. */
+  abstained: number;
+  winner: PartyId | null;
+  margin: number;
+}
+
+export type AllocationDetail = DivisorDetail | QuotaDetail | PluralityDetail | RunoffDetail;
 
 /** Barruti bakarreko esleipen baten emaitza. */
 export interface DistrictAllocation {
@@ -114,7 +146,13 @@ export interface DistrictAllocation {
 }
 
 export interface Warning {
-  kind: 'tie' | 'quota-fallback' | 'unfilled-seats' | 'more-parties-than-seats';
+  kind:
+    | 'tie'
+    | 'quota-fallback'
+    | 'unfilled-seats'
+    | 'more-parties-than-seats'
+    /** Sistema maioritarioa eserleku bat baino gehiagoko barrutian: irabazleak denak hartzen ditu. */
+    | 'general-ticket';
   message: string;
 }
 

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { districtValidVotes } from '../core/threshold';
 import type { ElectionResult, PartyId } from '../core/types';
 import { useApp } from '../state/scenario';
@@ -8,6 +9,15 @@ interface Props {
   paint: Record<PartyId, PartyPaint>;
   result: ElectionResult;
 }
+
+/**
+ * Barruti gehiago badago, banan-banan editatzen da.
+ *
+ * Bi arrazoi: 75 barrutiko sareta batek 675 sarrera-eremu marraztuko lituzke —inork ez du hori
+ * editatzen— eta graduatzaile bat mugitzean guztiak birmarraztu behar dira (~100 ms mugimenduko).
+ * Barruti bat aukeratuta, biak konpontzen dira.
+ */
+const COMPACT_ABOVE = 12;
 
 export function DataEditor({ paint, result }: Props) {
   const {
@@ -22,6 +32,14 @@ export function DataEditor({ paint, result }: Props) {
     setBlankVotes,
     setVotes,
   } = useApp();
+
+  const [focused, setFocused] = useState<string | null>(null);
+
+  const compact = scenario.districts.length > COMPACT_ABOVE;
+  const selectedId = focused ?? scenario.districts[0]?.id;
+  const visibleDistricts = compact
+    ? scenario.districts.filter((d) => d.id === selectedId)
+    : scenario.districts;
 
   return (
     <div className="stack" style={{ gap: 16 }}>
@@ -114,8 +132,31 @@ export function DataEditor({ paint, result }: Props) {
       <div className="card">
         <div className="spread" style={{ marginBottom: 10 }}>
           <h3>Barrutiak eta botoak</h3>
-          <button onClick={addDistrict}>+ Barrutia gehitu</button>
+          <div className="row">
+            {compact && (
+              <select
+                value={selectedId}
+                onChange={(e) => setFocused(e.target.value)}
+                style={{ width: 'auto' }}
+                aria-label="Editatzeko barrutia"
+              >
+                {scenario.districts.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            <button onClick={addDistrict}>+ Barrutia gehitu</button>
+          </div>
         </div>
+
+        {compact && (
+          <p className="hint" style={{ marginTop: 0 }}>
+            {scenario.districts.length} barruti daude: banan-banan editatzen dira. Aukeratu bat goiko
+            zerrendan.
+          </p>
+        )}
 
         <div className="scroll-x">
           <table>
@@ -147,7 +188,7 @@ export function DataEditor({ paint, result }: Props) {
               </tr>
             </thead>
             <tbody>
-              {scenario.districts.map((d) => {
+              {visibleDistricts.map((d) => {
                 const valid = districtValidVotes(scenario, d.id, config.threshold.includeBlank);
                 const excluded = result.districts.find((x) => x.districtId === d.id)?.excluded ?? [];
 

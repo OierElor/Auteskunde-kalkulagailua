@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import { csvToScenario } from '../core/csv';
 import { defaultColorForIndex } from '../core/palette';
+import { DEFAULT_SYSTEM_CONFIG } from '../core/systems';
 import type { SystemConfig, SystemId } from '../core/systems';
+import { DEFAULT_TRANSFER_CONFIG, cellKey } from '../core/transfers';
+import type { TransferConfig } from '../core/transfers';
 import type { District, MethodId, Party, PartyId, Scenario, ThresholdConfig } from '../core/types';
 import { DEFAULT_SCENARIO, EXAMPLES } from '../data/examples';
 
@@ -21,6 +24,13 @@ interface AppState extends Snapshot {
   setSystem: (system: SystemId) => void;
   setMethod: (method: MethodId) => void;
   setThreshold: (patch: Partial<ThresholdConfig>) => void;
+  setRunoff: (patch: Partial<SystemConfig['runoff']>) => void;
+  setTransfers: (patch: Partial<TransferConfig>) => void;
+  /** Matrizeko gelaxka bat eskuz jarri (ehunekotan). */
+  setTransferCell: (from: PartyId, to: PartyId, percent: number) => void;
+  setPartyAbstention: (from: PartyId, percent: number) => void;
+  /** Eskuzko gainidazketa guztiak kendu: hurbiltasunean oinarritutako lehenetsira itzuli. */
+  resetTransfers: () => void;
 
   addParty: () => void;
   removeParty: (id: PartyId) => void;
@@ -41,12 +51,6 @@ interface AppState extends Snapshot {
   undo: () => void;
   redo: () => void;
 }
-
-const DEFAULT_CONFIG: SystemConfig = {
-  system: 'list-pr',
-  method: 'dhondt',
-  threshold: { percent: 3, scope: 'district', includeBlank: true },
-};
 
 const HISTORY_LIMIT = 50;
 /** Graduatzaile bat arrastatzeak ez du 50 urrats sortu behar: tarte honetan aldaketak batzen dira. */
@@ -77,7 +81,7 @@ export const useApp = create<AppState>((set, get) => {
 
   return {
     scenario: DEFAULT_SCENARIO,
-    config: DEFAULT_CONFIG,
+    config: DEFAULT_SYSTEM_CONFIG,
     coalition: [],
     past: [],
     future: [],
@@ -103,6 +107,52 @@ export const useApp = create<AppState>((set, get) => {
     setThreshold: (patch) =>
       commit('threshold', (s) => ({
         config: { ...s.config, threshold: { ...s.config.threshold, ...patch } },
+      })),
+
+    setRunoff: (patch) =>
+      commit('runoff', (s) => ({
+        config: { ...s.config, runoff: { ...s.config.runoff, ...patch } },
+      })),
+
+    setTransfers: (patch) =>
+      commit('transfers', (s) => ({
+        config: { ...s.config, transfers: { ...s.config.transfers, ...patch } },
+      })),
+
+    setTransferCell: (from, to, percent) =>
+      commit(`transfer:${from}:${to}`, (s) => ({
+        config: {
+          ...s.config,
+          transfers: {
+            ...s.config.transfers,
+            cells: {
+              ...s.config.transfers.cells,
+              [cellKey(from, to)]: Math.max(0, percent),
+            },
+          },
+        },
+      })),
+
+    setPartyAbstention: (from, percent) =>
+      commit(`abstention:${from}`, (s) => ({
+        config: {
+          ...s.config,
+          transfers: {
+            ...s.config.transfers,
+            abstentions: {
+              ...s.config.transfers.abstentions,
+              [from]: Math.min(100, Math.max(0, percent)),
+            },
+          },
+        },
+      })),
+
+    resetTransfers: () =>
+      commit('reset-transfers', (s) => ({
+        config: {
+          ...s.config,
+          transfers: { ...DEFAULT_TRANSFER_CONFIG, affinity: s.config.transfers.affinity },
+        },
       })),
 
     addParty: () =>

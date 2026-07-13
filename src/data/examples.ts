@@ -100,6 +100,86 @@ const barrutiTxikiak: Scenario = (() => {
   return { name: '25 barruti txiki · 75 eserleku', parties: PARTIES, districts, votes, blankVotes };
 })();
 
+/** Hazi finkoko zorizko sorgailua: emaitza beti berbera da, eta beraz probagarria. */
+function seededRandom(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s |= 0;
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * 75 barruti uninominal (eserleku bat bakoitzean) — FPTP eta bi itzuli probatzeko.
+ *
+ * Barruti bakoitzak bere "joera" du ezker-eskuin ardatzean, eta joera horretatik hurbil dauden
+ * alderdiek boto gehiago jasotzen dituzte bertan. Aldakuntza sintetikoa da, hazi finko batekin
+ * sortua (beti berbera).
+ *
+ * GAKOA: botoak berriro eskalatzen dira alderdi bakoitzaren GUZTIZKO NAZIONALA aurreko
+ * eszenatokien berbera izan dadin (900.000 boto, banaketa berbera). Beraz konparaketa zehatza da:
+ * boto berberak, eserleku kopuru berbera, baina barruti uninominalak. FPTP-k gehiengoak nola
+ * fabrikatzen dituen ikusteko modurik garbiena.
+ */
+const barrutiUninominalak: Scenario = (() => {
+  const national = nationalVotes();
+  const nationalTotal = Object.values(national).reduce((a, b) => a + b, 0);
+  const random = seededRandom(20260713);
+  const COUNT = 75;
+  const SIGMA = 26; // Zenbat eta txikiagoa, orduan eta polarizatuagoak barrutiak.
+
+  const districts = Array.from({ length: COUNT }, (_, i) => ({
+    id: `u${i + 1}`,
+    name: `${i + 1}. barrutia`,
+    seats: 1,
+  }));
+
+  // 1) Barruti bakoitzeko botoak, joeraren arabera.
+  const raw: Record<string, Record<string, number>> = {};
+  for (let i = 0; i < COUNT; i++) {
+    const lean = 12 + 76 * (i / (COUNT - 1)) + (random() - 0.5) * 26;
+    const turnout = 10_000 + random() * 4_000;
+
+    const weights = PARTIES.map(
+      (p) => (national[p.id] / nationalTotal) * Math.exp(-Math.abs(p.position - lean) / SIGMA),
+    );
+    const weightSum = weights.reduce((a, b) => a + b, 0);
+
+    raw[districts[i].id] = Object.fromEntries(
+      PARTIES.map((p, k) => [p.id, (weights[k] / weightSum) * turnout]),
+    );
+  }
+
+  // 2) Alderdi bakoitza berreskalatu bere guztizko nazionala zehatz-zehatz berreskuratzeko,
+  //    eta hondarra hondar handienaren arabera banatu (botorik ez galtzeko, ez asmatzeko).
+  const votes: Scenario['votes'] = {};
+  for (const d of districts) votes[d.id] = {};
+
+  for (const p of PARTIES) {
+    const rawTotal = districts.reduce((sum, d) => sum + raw[d.id][p.id], 0);
+    const scaled = districts.map((d) => (raw[d.id][p.id] / rawTotal) * national[p.id]);
+    const floors = scaled.map(Math.floor);
+
+    let remaining = national[p.id] - floors.reduce((a, b) => a + b, 0);
+    const byRemainder = scaled
+      .map((v, i) => ({ i, frac: v - Math.floor(v) }))
+      .sort((a, b) => b.frac - a.frac);
+
+    for (let k = 0; k < remaining; k++) floors[byRemainder[k % COUNT].i] += 1;
+    districts.forEach((d, i) => {
+      votes[d.id][p.id] = floors[i];
+    });
+  }
+
+  const blankVotes: Scenario['blankVotes'] = {};
+  for (const d of districts) blankVotes[d.id] = 147;
+
+  return { name: '75 barruti uninominal · FPTP', parties: PARTIES, districts, votes, blankVotes };
+})();
+
 export interface Example {
   id: string;
   label: string;
@@ -126,7 +206,14 @@ export const EXAMPLES: Example[] = [
     hint: '3 eserlekuko barrutiak. Langarik jarri gabe, alderdi txikiak desagertu egiten dira.',
     scenario: barrutiTxikiak,
   },
+  {
+    id: 'uninominalak',
+    label: '75 barruti uninominal · FPTP',
+    hint: 'Boto nazional berberak, eserleku bakarreko barrutietan. Aukeratu FPTP edo bi itzuli sistema.',
+    scenario: barrutiUninominalak,
+  },
 ];
 
 export const DEFAULT_SCENARIO = hiruBarruti;
 export const SINGLE_DISTRICT_SCENARIO = barrutiBakarra;
+export const SINGLE_MEMBER_SCENARIO = barrutiUninominalak;

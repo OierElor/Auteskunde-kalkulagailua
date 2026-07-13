@@ -1,27 +1,21 @@
 import { useMemo, useState } from 'react';
 import { computeIndices } from './core/indices';
-import { runSystem } from './core/systems';
+import { runSystem, systemSpec } from './core/systems';
 import { useApp } from './state/scenario';
 import { ComparisonTable } from './ui/ComparisonTable';
 import { ControlPanel } from './ui/ControlPanel';
 import { CoalitionBuilder } from './ui/CoalitionBuilder';
 import { CsvPanel } from './ui/CsvPanel';
 import { DataEditor } from './ui/DataEditor';
+import { DistrictResults } from './ui/DistrictResults';
 import { Hemicycle } from './ui/Hemicycle';
 import { IndicesPanel } from './ui/IndicesPanel';
 import { QuotientTable } from './ui/QuotientTable';
 import { ResultsTable } from './ui/ResultsTable';
+import { TransferMatrix } from './ui/TransferMatrix';
 import { usePartyPaint, useTheme } from './ui/theme';
 
-type Tab = 'datuak' | 'zatidurak' | 'indizeak' | 'konparaketa' | 'csv';
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'datuak', label: 'Datuak' },
-  { id: 'zatidurak', label: 'Nola banatu diren' },
-  { id: 'indizeak', label: 'Proportzionaltasuna' },
-  { id: 'konparaketa', label: 'Metodoen konparaketa' },
-  { id: 'csv', label: 'CSV' },
-];
+type Tab = 'datuak' | 'banaketa' | 'transferentziak' | 'indizeak' | 'konparaketa' | 'csv';
 
 export default function App() {
   const [theme, toggleTheme] = useTheme();
@@ -30,10 +24,25 @@ export default function App() {
   const { scenario, config, coalition, toggleCoalition, clearCoalition, undo, redo, past, future } =
     useApp();
 
+  const spec = systemSpec(config.system);
   const paint = usePartyPaint(scenario.parties, theme);
 
   const result = useMemo(() => runSystem(scenario, config), [scenario, config]);
   const indices = useMemo(() => computeIndices(scenario, result), [scenario, result]);
+
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'datuak', label: 'Datuak' },
+    { id: 'banaketa', label: spec.proportional ? 'Nola banatu diren' : 'Barrutiak' },
+    ...(config.system === 'two-round'
+      ? [{ id: 'transferentziak' as Tab, label: 'Transferentziak' }]
+      : []),
+    { id: 'indizeak', label: 'Proportzionaltasuna' },
+    { id: 'konparaketa', label: spec.proportional ? 'Metodoen konparaketa' : 'Sistemen konparaketa' },
+    { id: 'csv', label: 'CSV' },
+  ];
+
+  // Fitxa aktiboa desagertu bada (sistema aldatzean), lehenengora itzuli.
+  const activeTab = tabs.some((t) => t.id === tab) ? tab : 'datuak';
 
   const setCoalition = (ids: string[]) => {
     clearCoalition();
@@ -46,7 +55,7 @@ export default function App() {
         <div>
           <h1>Hauteskunde Kalkulagailua</h1>
           <span className="subtitle">
-            {scenario.name} · {scenario.districts.length} barruti ·{' '}
+            {scenario.name} · {spec.name} · {scenario.districts.length} barruti ·{' '}
             {scenario.districts.reduce((s, d) => s + d.seats, 0)} eserleku
           </span>
         </div>
@@ -113,11 +122,11 @@ export default function App() {
 
           <div>
             <div className="tabs" role="tablist">
-              {TABS.map((t) => (
+              {tabs.map((t) => (
                 <button
                   key={t.id}
                   role="tab"
-                  aria-selected={tab === t.id}
+                  aria-selected={activeTab === t.id}
                   onClick={() => setTab(t.id)}
                 >
                   {t.label}
@@ -126,22 +135,26 @@ export default function App() {
             </div>
 
             <div style={{ paddingTop: 16 }}>
-              {tab === 'datuak' && <DataEditor paint={paint} result={result} />}
-              {tab === 'zatidurak' && (
-                <QuotientTable scenario={scenario} result={result} paint={paint} />
-              )}
-              {tab === 'indizeak' && (
+              {activeTab === 'datuak' && <DataEditor paint={paint} result={result} />}
+
+              {activeTab === 'banaketa' &&
+                (spec.proportional ? (
+                  <QuotientTable scenario={scenario} result={result} paint={paint} />
+                ) : (
+                  <DistrictResults scenario={scenario} result={result} paint={paint} />
+                ))}
+
+              {activeTab === 'transferentziak' && <TransferMatrix paint={paint} />}
+
+              {activeTab === 'indizeak' && (
                 <IndicesPanel parties={scenario.parties} indices={indices} paint={paint} />
               )}
-              {tab === 'konparaketa' && (
-                <ComparisonTable
-                  scenario={scenario}
-                  threshold={config.threshold}
-                  current={config.method}
-                  paint={paint}
-                />
+
+              {activeTab === 'konparaketa' && (
+                <ComparisonTable scenario={scenario} config={config} paint={paint} />
               )}
-              {tab === 'csv' && <CsvPanel />}
+
+              {activeTab === 'csv' && <CsvPanel />}
             </div>
           </div>
         </main>

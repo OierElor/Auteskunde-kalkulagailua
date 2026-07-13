@@ -12,6 +12,7 @@ npm run build    # dist/ karpeta estatikoa
 
 ## Zer egin dezakezu
 
+- **Sistema elektorala** aldatu: zerrenda proportzionala, **FPTP** (maioritarioa) edo **bi itzuli**.
 - **Alderdiak** gehitu, kendu, berrizendatu, kolorez aldatu eta ezker-eskuin ardatzean kokatu.
 - **Eserlekuak** igo eta jaitsi, guztira edo barrutika.
 - **Barrera elektorala** mugitu (%0–15), barrutika edo estatu mailan, boto zuriak izendatzailean
@@ -20,11 +21,24 @@ npm run build    # dist/ karpeta estatikoa
   Huntington-Hill, eta kuota-metodoak (Hare, Droop, Hagenbach-Bischoff, Imperiali) hondar
   handienarekin.
 - **Barrutiak** gehitu eta kendu: sistema barruti anitzekoa da.
+- **Boto-transferentziak** editatu bigarren itzulirako (ikus behean).
 - **Koalizioak** eraiki eta gehiengo absolutua lortzen den ikusi; gutxieneko koalizio irabazleak
   automatikoki kalkulatzen dira.
 - **Proportzionaltasuna** neurtu: Gallagher, Loosemore-Hanby, galdutako botoak, alderdi eraginkorrak.
-- **Metodo guztiak konparatu** datu berberekin, taula bakarrean.
+- **Sistema eta metodo guztiak konparatu** datu berberekin, taula bakarrean.
 - **CSV** inportatu eta esportatu.
+
+## Bi itzuliaz: zer den hipotesi bat eta zer den datu bat
+
+Bigarren itzuli baten emaitza kalkulatzeko, bigarren itzuliko botoak behar dira. **Ez dira
+existitzen.** Alderdi bat kanporatzean bere hautesleak nora joango diren ez dago boto-kopuruetan.
+
+Aplikazioak ez du asmatzen: **transferentzia-matrize bat eskatzen du**, erabiltzaileak editagarria
+(`Transferentziak` fitxa). Lehenetsia hurbiltasun ideologikoan oinarritzen da (ezker-eskuin ardatza)
+gehi abstentzio-tasa bat, baina hipotesi bat da eta hala aurkezten da. Aldatu eta ikusi emaitzak
+zenbat mugitzen diren — hori da tresnaren balioa.
+
+Matrize berbera erabiliko du STVk 4. fasean.
 
 ## Arkitektura
 
@@ -34,21 +48,28 @@ du, eta begiz ezin da antzeman. Probak dira sare bakarra.
 
 | Fitxategia | Zer den |
 |---|---|
-| `core/allocate.ts` | Esleipenaren **sarrera-puntu bakarra**. Sistema guztiek hemendik pasatzen dute. |
+| `core/allocate.ts` | Esleipenaren **sarrera-puntu bakarra**. Sistema proportzional guztiek hemendik pasatzen dute. |
 | `core/divisors.ts` · `core/quotas.ts` | Metodoen definizioak. |
 | `core/threshold.ts` | Langa: esparrua, barrutiko gainidazketa, boto zuriak. |
-| `core/systems/` | Sistema elektoralak. Bakoitza modulu bat, erregistro batean. |
+| `core/systems/listPR.ts` | Zerrenda proportzionala, barruti anitzekoa. |
+| `core/systems/majoritarian.ts` | FPTP eta bi itzuli. |
+| `core/transfers.ts` | Boto-transferentzien matrizea (bi itzulia; gero STV). |
 | `core/indices.ts` · `core/coalitions.ts` | Neurriak eta koalizioak. |
 | `core/hemicycle.ts` | Hemizikloaren geometria (funtzio purua, probatua). |
 | `core/color.ts` | OKLCH: alderdien koloreak gai argira eta ilunera egokitzen ditu. |
 
 **Ideia gakoa:** barruti uninominal bat `seats: 1` duen barruti arrunta da. Horri esker FPTP-k eta
-sistema mistoek datu-eredu **berbera** erabiliko dute; ez da beste bat behar.
+sistema mistoek datu-eredu **berbera** erabiltzen dute; ez da beste bat behar.
 
-## Inbariante nagusia
+## Bi inbariante
 
-Esleitutako eserlekuak beti dira barruti guztien eserlekuen batura. Metodo guztietan, datu
-guztiekin. Proba bat dago hori zaintzen duena — hori hausten bada, dena dago hautsita.
+1. **Esleitutako eserlekuak = barruti guztien eserlekuak.** Beti, sistema eta metodo guztietan.
+   Hori hausten bada, dena dago hautsita.
+2. **Barruti uninominaletan, D'Hondt eta FPTP emaitza berbera ematen dute.** Eserleku bakarrarekin,
+   zatidurarik handiena boto gehien dituenarena da — hau da, D'Hondt *pluralitatea da*. Aurreko
+   ideia gakoa egiaztatzen du: hori hausten bada, datu-eredua dago oker.
+
+Bi inbarianteek proba bana dute.
 
 ## Datuak
 
@@ -66,7 +87,8 @@ zuritzat hartzen da, ez alderdi gisa.
 
 ## Egoera
 
-**1. fasea osatuta**: barruti anitzeko zerrenda proportzionala, metodo guztiekin.
+- **1. fasea osatuta**: barruti anitzeko zerrenda proportzionala, metodo guztiekin.
+- **2. fasea osatuta**: sistema maioritarioak (FPTP eta bi itzuli, transferentzia-matrizearekin).
 
-Hurrengoak: sistema maioritarioak (FPTP, bi itzuli) → sistema mistoak (MMM, MMP overhang-arekin) →
-zerrenda irekiak eta boto ordenatua (STV, IRV).
+Hurrengoak: sistema mistoak (MMM, MMP overhang-arekin) → zerrenda irekiak eta boto ordenatua
+(STV, IRV).
