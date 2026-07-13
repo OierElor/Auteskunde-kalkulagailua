@@ -12,7 +12,8 @@ npm run build    # dist/ karpeta estatikoa
 
 ## Zer egin dezakezu
 
-- **Sistema elektorala** aldatu: zerrenda proportzionala, **FPTP** (maioritarioa) edo **bi itzuli**.
+- **Sistema elektorala** aldatu: zerrenda proportzionala, **FPTP**, **bi itzuli**, **MMM** (mistoa
+  paraleloa) edo **MMP** (mistoa konpentsatzailea, overhang-arekin).
 - **Alderdiak** gehitu, kendu, berrizendatu, kolorez aldatu eta ezker-eskuin ardatzean kokatu.
 - **Eserlekuak** igo eta jaitsi, guztira edo barrutika.
 - **Barrera elektorala** mugitu (%0–15), barrutika edo estatu mailan, boto zuriak izendatzailean
@@ -40,6 +41,34 @@ zenbat mugitzen diren — hori da tresnaren balioa.
 
 Matrize berbera erabiliko du STVk 4. fasean.
 
+## Sistema mistoak: lotura da dena
+
+Bi maila dituzte: barruti uninominalak + zerrenda-eserlekuen poltsa nazionala. Aldea **bien arteko
+lotura** da, eta emaitza guztiz bestelakoa da:
+
+| Sistema | GOR (botoen %16,4) | Ganbera | Gallagher |
+|---|---|---|---|
+| FPTP | **0** | 75 | 17,6 |
+| MMM (paraleloa) | 4 | 100 | 13,6 |
+| MMP (konpentsatzailea) | **17** | 105 | **3,0** |
+
+**MMM**-k bi mailak bereiz kalkulatzen ditu eta batu: zerrenda-eserlekuak oinarri desproportzional
+baten gainean botatzen ditu, eta ia ez du ezer zuzentzen. **MMP**-k alderdi bakoitzari *dagokion*
+guztizkoa kalkulatzen du eta barrutietan irabazitakoa kentzen dio — konpentsazioa benetakoa da.
+
+### Overhang
+
+Alderdi batek dagokiona baino barruti **gehiago** irabaz ditzake. Eserlekuak ezin zaizkio kendu
+(barrutian irabazi ditu), beraz zerbait hautsi behar da. Hiru irtenbide, hirurak benetakoak:
+
+| Erregela | Zer egiten du | Prezioa |
+|---|---|---|
+| **Mantendu** | Ganbera hazi (Alemania 2013 arte) | Proportzionaltasuna ez da erabatekoa |
+| **Orekatu** | Eserleku gehiago gehitu proportzionala izan arte (*Ausgleichsmandate*) | Ganbera asko hazten da (100 → 123) |
+| **Finkoa** | Ganberak ez du hazten | Besteek konpentsazio gutxiago dute |
+
+Zerrenda-poltsa txikitu eta overhang-a agertzen ikusiko duzu.
+
 ## Arkitektura
 
 `src/core/` **UI-rik gabeko TypeScript hutsa da**, funtzio puruz osatua eta guztiz probatua.
@@ -52,7 +81,8 @@ du, eta begiz ezin da antzeman. Probak dira sare bakarra.
 | `core/divisors.ts` · `core/quotas.ts` | Metodoen definizioak. |
 | `core/threshold.ts` | Langa: esparrua, barrutiko gainidazketa, boto zuriak. |
 | `core/systems/listPR.ts` | Zerrenda proportzionala, barruti anitzekoa. |
-| `core/systems/majoritarian.ts` | FPTP eta bi itzuli. |
+| `core/systems/majoritarian.ts` | FPTP eta bi itzuli. `pluralityDistricts()` sistema mistoek berrerabiltzen dute. |
+| `core/systems/mixed.ts` | MMM eta MMP, overhang-aren hiru erregelekin. |
 | `core/transfers.ts` | Boto-transferentzien matrizea (bi itzulia; gero STV). |
 | `core/indices.ts` · `core/coalitions.ts` | Neurriak eta koalizioak. |
 | `core/hemicycle.ts` | Hemizikloaren geometria (funtzio purua, probatua). |
@@ -89,6 +119,6 @@ zuritzat hartzen da, ez alderdi gisa.
 
 - **1. fasea osatuta**: barruti anitzeko zerrenda proportzionala, metodo guztiekin.
 - **2. fasea osatuta**: sistema maioritarioak (FPTP eta bi itzuli, transferentzia-matrizearekin).
+- **3. fasea osatuta**: sistema mistoak (MMM eta MMP, overhang-aren hiru erregelekin, boto banatua).
 
-Hurrengoak: sistema mistoak (MMM, MMP overhang-arekin) → zerrenda irekiak eta boto ordenatua
-(STV, IRV).
+Hurrengoa: zerrenda irekiak eta boto ordenatua (STV, IRV).

@@ -48,38 +48,16 @@ function generalTicketWarning(districtName: string, seats: number): Warning {
   };
 }
 
-function assemble(
-  scenario: Scenario,
-  districts: DistrictAllocation[],
-  warnings: Warning[],
-): ElectionResult {
-  const allParties = scenario.parties.map((p) => p.id);
-  const seatsByDistrict: Record<string, Record<PartyId, number>> = {};
-  for (const d of districts) seatsByDistrict[d.districtId] = d.seats;
-
-  const totals: Record<PartyId, number> = {};
-  const voteTotals: Record<PartyId, number> = {};
-  for (const p of allParties) {
-    totals[p] = scenario.districts.reduce((sum, d) => sum + (seatsByDistrict[d.id]?.[p] ?? 0), 0);
-    voteTotals[p] = scenario.districts.reduce((sum, d) => sum + partyVotes(scenario, d.id, p), 0);
-  }
-
-  return {
-    seatsByDistrict,
-    totals,
-    voteTotals,
-    totalSeats: scenario.districts.reduce((sum, d) => sum + d.seats, 0),
-    totalVotes: Object.values(voteTotals).reduce((a, b) => a + b, 0),
-    totalValidVotes: scenario.districts.reduce(
-      (sum, d) => sum + districtValidVotes(scenario, d.id, true),
-      0,
-    ),
-    districts,
-    warnings,
-  };
-}
-
-export function runFPTP(scenario: Scenario): ElectionResult {
+/**
+ * Barrutika pluralitatea ebazten du: sistema maioritarioen lehen maila.
+ *
+ * Sistema mistoek ZUZENEAN hau erabiltzen dute beren maila nominalerako — ez dute logika
+ * propiorik behar, barruti uninominal bat `seats: 1` duen barruti arrunta baita.
+ */
+export function pluralityDistricts(scenario: Scenario): {
+  districts: DistrictAllocation[];
+  warnings: Warning[];
+} {
   const allParties = scenario.parties.map((p) => p.id);
   const districts: DistrictAllocation[] = [];
   const warnings: Warning[] = [];
@@ -122,6 +100,42 @@ export function runFPTP(scenario: Scenario): ElectionResult {
     warnings.push(...local);
   }
 
+  return { districts, warnings };
+}
+
+export function assemble(
+  scenario: Scenario,
+  districts: DistrictAllocation[],
+  warnings: Warning[],
+): ElectionResult {
+  const allParties = scenario.parties.map((p) => p.id);
+  const seatsByDistrict: Record<string, Record<PartyId, number>> = {};
+  for (const d of districts) seatsByDistrict[d.districtId] = d.seats;
+
+  const totals: Record<PartyId, number> = {};
+  const voteTotals: Record<PartyId, number> = {};
+  for (const p of allParties) {
+    totals[p] = scenario.districts.reduce((sum, d) => sum + (seatsByDistrict[d.id]?.[p] ?? 0), 0);
+    voteTotals[p] = scenario.districts.reduce((sum, d) => sum + partyVotes(scenario, d.id, p), 0);
+  }
+
+  return {
+    seatsByDistrict,
+    totals,
+    voteTotals,
+    totalSeats: scenario.districts.reduce((sum, d) => sum + d.seats, 0),
+    totalVotes: Object.values(voteTotals).reduce((a, b) => a + b, 0),
+    totalValidVotes: scenario.districts.reduce(
+      (sum, d) => sum + districtValidVotes(scenario, d.id, true),
+      0,
+    ),
+    districts,
+    warnings,
+  };
+}
+
+export function runFPTP(scenario: Scenario): ElectionResult {
+  const { districts, warnings } = pluralityDistricts(scenario);
   return assemble(scenario, districts, warnings);
 }
 

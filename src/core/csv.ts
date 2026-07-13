@@ -13,6 +13,9 @@ import type { Party, Scenario } from './types';
 
 const BLANK_COLUMN = /^(zuriak?|boto\s*zuriak?|en\s*blanco|blanco|votos?\s*en\s*blanco|blank)$/i;
 
+/** "EAJ (2)" = EAJ alderdiaren bigarren botoa (zerrenda-botoa) sistema mistoetan. */
+const SECOND_VOTE_COLUMN = /^(.+?)\s*\(2\)$/;
+
 /** Zenbaki-formatu europarra eta ingelesa, biak: "1.234", "1 234", "1,234" → 1234. */
 function parseCount(raw: string): number {
   const digits = raw.replace(/[^\d]/g, '');
@@ -121,9 +124,16 @@ export function csvToScenario(text: string, previous?: Scenario): Scenario {
 
   const columns = header.slice(2);
   const blankIndex = columns.findIndex((c) => BLANK_COLUMN.test(c.trim()));
-  const partyColumns = columns
+
+  const named = columns
     .map((name, i) => ({ name: name.trim(), index: i }))
     .filter((c) => c.name !== '' && c.index !== blankIndex);
+
+  const partyColumns = named.filter((c) => !SECOND_VOTE_COLUMN.test(c.name));
+  const secondColumns = named
+    .map((c) => ({ c, match: SECOND_VOTE_COLUMN.exec(c.name) }))
+    .filter((x) => x.match !== null)
+    .map((x) => ({ base: x.match![1].trim(), index: x.c.index }));
 
   if (partyColumns.length === 0) {
     throw new CsvError('Ez da alderdi-zutaberik aurkitu.');
@@ -143,9 +153,17 @@ export function csvToScenario(text: string, previous?: Scenario): Scenario {
     };
   });
 
+  // Bigarren botoaren zutabeak alderdi bakoitzari lotu, izenaren arabera.
+  const secondByParty = new Map<string, number>();
+  for (const col of secondColumns) {
+    const i = partyColumns.findIndex((p) => p.name === col.base);
+    if (i >= 0) secondByParty.set(parties[i].id, col.index);
+  }
+
   const districtIds = new Set<string>();
   const districts: Scenario['districts'] = [];
   const votes: Scenario['votes'] = {};
+  const secondVotes: Scenario['votes'] = {};
   const blankVotes: Scenario['blankVotes'] = {};
 
   for (let r = 1; r < rows.length; r++) {
@@ -165,6 +183,15 @@ export function csvToScenario(text: string, previous?: Scenario): Scenario {
     partyColumns.forEach((col, i) => {
       votes[id][parties[i].id] = parseCount(row[2 + col.index] ?? '');
     });
+
+    if (secondByParty.size > 0) {
+      secondVotes[id] = {};
+      for (const p of parties) {
+        const col = secondByParty.get(p.id);
+        secondVotes[id][p.id] = col === undefined ? 0 : parseCount(row[2 + col] ?? '');
+      }
+    }
+
     blankVotes[id] = blankIndex >= 0 ? parseCount(row[2 + blankIndex] ?? '') : 0;
   }
 
@@ -176,6 +203,7 @@ export function csvToScenario(text: string, previous?: Scenario): Scenario {
     districts,
     votes,
     blankVotes,
+    ...(secondByParty.size > 0 ? { secondVotes } : {}),
   };
 }
 
@@ -185,7 +213,15 @@ export function scenarioToCsv(scenario: Scenario, delimiter = ';'): string {
       ? `"${v.replace(/"/g, '""')}"`
       : v;
 
-  const header = ['Barrutia', 'Eserlekuak', ...scenario.parties.map((p) => p.name), 'Zuriak'];
+  const hasSecond = scenario.secondVotes !== undefined;
+
+  const header = [
+    'Barrutia',
+    'Eserlekuak',
+    ...scenario.parties.map((p) => p.name),
+    ...(hasSecond ? scenario.parties.map((p) => `${p.name} (2)`) : []),
+    'Zuriak',
+  ];
   const lines = [header.map(esc).join(delimiter)];
 
   for (const d of scenario.districts) {
@@ -194,6 +230,9 @@ export function scenarioToCsv(scenario: Scenario, delimiter = ';'): string {
         esc(d.name),
         String(d.seats),
         ...scenario.parties.map((p) => String(scenario.votes[d.id]?.[p.id] ?? 0)),
+        ...(hasSecond
+          ? scenario.parties.map((p) => String(scenario.secondVotes?.[d.id]?.[p.id] ?? 0))
+          : []),
         String(scenario.blankVotes[d.id] ?? 0),
       ].join(delimiter),
     );

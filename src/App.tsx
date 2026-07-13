@@ -10,6 +10,7 @@ import { DataEditor } from './ui/DataEditor';
 import { DistrictResults } from './ui/DistrictResults';
 import { Hemicycle } from './ui/Hemicycle';
 import { IndicesPanel } from './ui/IndicesPanel';
+import { MixedTierPanel } from './ui/MixedTierPanel';
 import { QuotientTable } from './ui/QuotientTable';
 import { ResultsTable } from './ui/ResultsTable';
 import { TransferMatrix } from './ui/TransferMatrix';
@@ -32,7 +33,10 @@ export default function App() {
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'datuak', label: 'Datuak' },
-    { id: 'banaketa', label: spec.proportional ? 'Nola banatu diren' : 'Barrutiak' },
+    {
+      id: 'banaketa',
+      label: spec.mixed ? 'Bi mailak' : spec.proportional ? 'Nola banatu diren' : 'Barrutiak',
+    },
     ...(config.system === 'two-round'
       ? [{ id: 'transferentziak' as Tab, label: 'Transferentziak' }]
       : []),
@@ -138,7 +142,12 @@ export default function App() {
               {activeTab === 'datuak' && <DataEditor paint={paint} result={result} />}
 
               {activeTab === 'banaketa' &&
-                (spec.proportional ? (
+                (spec.mixed ? (
+                  <div className="stack" style={{ gap: 16 }}>
+                    <MixedTierPanel parties={scenario.parties} result={result} paint={paint} />
+                    <DistrictResults scenario={scenario} result={result} paint={paint} />
+                  </div>
+                ) : spec.proportional ? (
                   <QuotientTable scenario={scenario} result={result} paint={paint} />
                 ) : (
                   <DistrictResults scenario={scenario} result={result} paint={paint} />

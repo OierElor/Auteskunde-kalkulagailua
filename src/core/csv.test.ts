@@ -79,6 +79,33 @@ describe('CSV akatsak', () => {
   });
 });
 
+describe('bigarren botoa (sistema mistoak)', () => {
+  const WITH_SECOND = [
+    'Barrutia;Eserlekuak;A;B;A (2);B (2);Zuriak',
+    'Bat;1;600;400;300;700;10',
+  ].join('\n');
+
+  it('"(2)" atzizkia bigarren botoa da, ez alderdi berri bat', () => {
+    const s = csvToScenario(WITH_SECOND);
+    expect(s.parties.map((p) => p.name)).toEqual(['A', 'B']);
+
+    const d = s.districts[0].id;
+    expect(s.votes[d]).toEqual({ a: 600, b: 400 });
+    expect(s.secondVotes![d]).toEqual({ a: 300, b: 700 });
+  });
+
+  it('bigarren botorik ez badago, eremua ez da sortzen', () => {
+    expect(csvToScenario(CSV).secondVotes).toBeUndefined();
+  });
+
+  it('joan-etorrian ez da galtzen — bestela datuak isilean galduko lirateke', () => {
+    const original = csvToScenario(WITH_SECOND);
+    const back = csvToScenario(scenarioToCsv(original), original);
+    expect(back.secondVotes).toEqual(original.secondVotes);
+    expect(back.votes).toEqual(original.votes);
+  });
+});
+
 describe('joan-etorria (round trip)', () => {
   it('esportatu eta berriz inportatuta, datuak berdinak dira', () => {
     const original = csvToScenario(CSV);

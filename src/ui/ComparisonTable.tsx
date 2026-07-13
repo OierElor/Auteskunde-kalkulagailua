@@ -46,8 +46,10 @@ export function ComparisonTable({ scenario, config, paint }: Props) {
       };
     });
 
-    if (spec.proportional) return prColumns;
+    if (config.system === 'list-pr') return prColumns;
 
+    // Sistema hau ez da zerrenda-PR hutsa: bere emaitza zutabe bat gehiago da, eta HOR ikusten da
+    // benetako aldea (adibidez, MMP-k zuzendu egiten duena eta MMM-k ez).
     const current = runSystem(scenario, config);
     return [
       {
@@ -60,21 +62,21 @@ export function ComparisonTable({ scenario, config, paint }: Props) {
     ];
   }, [scenario, config, spec]);
 
-  const currentKey = spec.proportional ? config.method : config.system;
+  const currentKey = config.system === 'list-pr' ? config.method : config.system;
   const currentTotals = columns.find((c) => c.key === currentKey)?.totals ?? {};
   const bestGallagher = Math.min(...columns.map((c) => c.gallagher));
 
   return (
     <div className="card">
       <h3 style={{ marginBottom: 10 }}>
-        {spec.proportional ? 'Metodoen konparaketa' : 'Sistemen konparaketa'}
+        {config.system === 'list-pr' ? 'Metodoen konparaketa' : 'Sistemen konparaketa'}
       </h3>
       <p className="hint" style={{ marginTop: 0 }}>
         Boto, barruti eta langa berberak zutabe guztietan. Zenbaki koloredunek uneko emaitzarekiko
         aldea adierazten dute.
-        {spec.proportional
+        {config.system === 'list-pr'
           ? ' Klikatu goiburu bat metodo hori hartzeko.'
-          : ` Lehen zutabea uneko sistema da (${spec.name}); gainerakoak proportzionalak lirateke.`}
+          : ` Lehen zutabea uneko sistema da (${spec.name}); gainerakoak zerrenda-proportzionala izango balitz erakusten dute, dauden barrutiekin.`}
       </p>
 
       <div className="scroll-x">

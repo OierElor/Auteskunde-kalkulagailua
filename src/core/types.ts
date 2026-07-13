@@ -36,6 +36,12 @@ export interface Scenario {
    * beraz langaren izendatzailean sartzen dira eta alderdi txikiak kanpoan uzten dituzte.
    */
   blankVotes: Record<DistrictId, number>;
+  /**
+   * "Bigarren botoa": sistema mistoetan hautesleak bi boto ematen ditu — bat barrutiko
+   * hautagaiari, bestea alderdi-zerrendari. Biak desberdinak izan daitezke (boto banatua), eta
+   * hori da Alemaniako overhang-aren iturri nagusia. Ez badago, lehen botoa erabiltzen da bietan.
+   */
+  secondVotes?: VoteMatrix;
 }
 
 // --- Esleipen-metodoak ---------------------------------------------------
@@ -152,14 +158,46 @@ export interface Warning {
     | 'unfilled-seats'
     | 'more-parties-than-seats'
     /** Sistema maioritarioa eserleku bat baino gehiagoko barrutian: irabazleak denak hartzen ditu. */
-    | 'general-ticket';
+    | 'general-ticket'
+    /** MMP: alderdi batek dagokiona baino barruti gehiago irabazi ditu. */
+    | 'overhang'
+    /** Bigarren botoa eskatu da, baina ez dago daturik. */
+    | 'no-second-vote';
   message: string;
+}
+
+/**
+ * Sistema mistoen bigarren maila: zerrenda-eserlekuen poltsa nazionala.
+ *
+ * Hemen ikusten da MMM eta MMP-ren arteko aldea: MMM-n `entitlement` ez da erabiltzen (bi mailak
+ * bereiz kalkulatzen dira); MMP-n `entitlement` da guztizko proportzionala, eta zerrenda-eserlekuak
+ * hori eta barrutietan irabazitakoaren arteko ALDEA dira.
+ */
+export interface ListTierResult {
+  compensatory: boolean;
+  /** Barrutietan irabazitako eserlekuak (lehen maila). */
+  districtWins: Record<PartyId, number>;
+  /** Zerrenda-mailan emandako eserlekuak (bigarren maila). */
+  listSeats: Record<PartyId, number>;
+  /** MMP: alderdi bakoitzari proportzionalki DAGOKION guztizkoa. MMM-n ez da erabiltzen. */
+  entitlement: Record<PartyId, number>;
+  /** MMP: dagokiona baino barruti gehiago irabazi dituenaren soberakina. */
+  overhang: Record<PartyId, number>;
+  /** Proportzionaltasuna berreskuratzeko gehitutako eserlekuak (Ausgleichsmandate). */
+  levelingSeats: number;
+  /** Ganberaren azken tamaina (overhang-arekin haz daiteke). */
+  chamberSize: number;
+  /** Ganberaren tamaina nominala: barrutiak + zerrenda-poltsa. */
+  nominalSize: number;
+  /** Langak zerrenda-mailatik kanpo utzitakoak (barrutiak irabazi baditu, mantendu egiten ditu). */
+  excluded: PartyId[];
+  detail: AllocationDetail;
 }
 
 export interface ElectionResult {
   /** barrutia -> alderdia -> eserlekuak */
   seatsByDistrict: Record<DistrictId, Record<PartyId, number>>;
-  /** alderdia -> eserleku guztiak */
+  /** alderdia -> eserleku guztiak (bi mailak batuta) */
   totals: Record<PartyId, number>;
   /** alderdia -> boto guztiak (barruti guztietan) */
   voteTotals: Record<PartyId, number>;
@@ -168,5 +206,7 @@ export interface ElectionResult {
   /** Boto zuriak barne, baina hautagaitzarik gabekoak kanpo. */
   totalValidVotes: number;
   districts: DistrictAllocation[];
+  /** Sistema mistoetan bakarrik. */
+  listTier?: ListTierResult;
   warnings: Warning[];
 }

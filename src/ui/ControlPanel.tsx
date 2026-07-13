@@ -14,6 +14,8 @@ export function ControlPanel() {
     setMethod,
     setThreshold,
     setRunoff,
+    setMixed,
+    enableSecondVotes,
     scaleAllSeats,
     loadExample,
   } = useApp();
@@ -65,12 +67,12 @@ export function ControlPanel() {
         </select>
         <p className="hint">{spec.description}</p>
 
-        {!spec.proportional && !uninominal && (
+        {(!spec.proportional || spec.mixed) && !uninominal && (
           <div className="banner alert">
             <span aria-hidden>⚠</span>
             <div>
-              Sistema maioritarioa <strong>barruti uninominaletarako</strong> da, baina barruti
-              hauek eserleku bat baino gehiago dute: irabazleak <strong>denak</strong> hartzen ditu.
+              Sistema honek <strong>barruti uninominalak</strong> behar ditu, baina barruti hauek
+              eserleku bat baino gehiago dute: irabazleak <strong>denak</strong> hartzen ditu.
               Kargatu <em>75 barruti uninominal</em> adibidea emaitza esanguratsua ikusteko.
             </div>
           </div>
@@ -121,14 +123,22 @@ export function ControlPanel() {
               </span>
             </div>
 
-            <select
-              value={config.threshold.scope}
-              onChange={(e) => setThreshold({ scope: e.target.value as 'district' | 'national' })}
-              aria-label="Langaren esparrua"
-            >
-              <option value="district">Barruti bakoitzean aplikatu</option>
-              <option value="national">Estatu mailan aplikatu</option>
-            </select>
+            {spec.mixed ? (
+              <p className="hint" style={{ margin: 0 }}>
+                Sistema mistoetan langa <strong>beti nazionala</strong> da: eserleku-poltsa bakarra
+                banatzen ari gara, eta ez luke zentzurik barrutiz barruti aplikatzeak. Alemaniako %5a
+                horrelakoa da.
+              </p>
+            ) : (
+              <select
+                value={config.threshold.scope}
+                onChange={(e) => setThreshold({ scope: e.target.value as 'district' | 'national' })}
+                aria-label="Langaren esparrua"
+              >
+                <option value="district">Barruti bakoitzean aplikatu</option>
+                <option value="national">Estatu mailan aplikatu</option>
+              </select>
+            )}
 
             <label className="checkbox">
               <input
@@ -155,6 +165,66 @@ export function ControlPanel() {
             gehien dituenak barrutia irabazten du, %2 baino ez badu ere. Barrutiaren tamaina bera da
             langa —eta askoz gogorragoa.
           </p>
+        </div>
+      )}
+
+      {spec.mixed && (
+        <div className="card stack">
+          <h3>Bi mailak</h3>
+
+          <div className="spread">
+            <label style={{ minWidth: 100 }}>Zerrenda-eserlekuak</label>
+            <input
+              type="range"
+              min={0}
+              max={200}
+              step={1}
+              value={config.mixed.listSeats}
+              onChange={(e) => setMixed({ listSeats: Number(e.target.value) })}
+              aria-label="Zerrenda-mailako eserlekuak"
+            />
+            <span className="value" style={{ minWidth: 34, textAlign: 'right' }}>
+              {config.mixed.listSeats}
+            </span>
+          </div>
+          <p className="hint" style={{ marginTop: -4 }}>
+            {scenario.districts.length} barruti + {config.mixed.listSeats} zerrenda ={' '}
+            <strong>{scenario.districts.reduce((s, d) => s + d.seats, 0) + config.mixed.listSeats}</strong>{' '}
+            eserleku nominal.
+            {config.system === 'mmp' &&
+              ' Poltsa txikitzean overhang-a agertzen da: probatu jaisten.'}
+          </p>
+
+          {config.system === 'mmp' && (
+            <>
+              <label>Overhang-a (dagokiona baino barruti gehiago)</label>
+              <select
+                value={config.mixed.overhang}
+                onChange={(e) => setMixed({ overhang: e.target.value as never })}
+                aria-label="Overhang-aren erregela"
+              >
+                <option value="keep">Mantendu — ganbera hazi (Alemania 2013 arte)</option>
+                <option value="leveling">Orekatu — eserleku gehiago proportzionala izan arte</option>
+                <option value="fixed">Finkoa — ganbera ez da hazten, besteek ordaintzen dute</option>
+              </select>
+            </>
+          )}
+
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={config.mixed.ballot === 'second'}
+              onChange={(e) => enableSecondVotes(e.target.checked)}
+            />
+            <span>
+              Bigarren botoa (boto banatua)
+              <br />
+              <span className="hint">
+                Hautesleak barrutian alderdi bati eta zerrendan beste bati bozka diezaioke. Hori da
+                Alemaniako overhang-aren iturri nagusia. Datuak <strong>Datuak</strong> fitxan.
+              </span>
+            </span>
+          </label>
         </div>
       )}
 

@@ -208,6 +208,106 @@ describe('sistema maioritarioak (2. fasea)', () => {
   });
 });
 
+describe('sistema mistoak (3. fasea)', () => {
+  const seatsOf = (name: string) =>
+    Number(
+      within(screen.getAllByText(name)[0].closest('tr')!).getAllByRole('cell')[3].textContent,
+    );
+
+  const selectSystem = (value: string) =>
+    fireEvent.change(screen.getByLabelText('Sistema elektorala'), { target: { value } });
+
+  beforeEach(() => useApp.setState({ scenario: SINGLE_MEMBER_SCENARIO }));
+
+  it('MMP-k FPTPk ezabatutako alderdia berpizten du', () => {
+    const { container } = render(<App />);
+    selectSystem('fptp');
+    expect(seatsOf('Alderdi Gorria')).toBe(0); // botoen %16,4rekin
+
+    selectSystem('mmp');
+
+    // Zerrenda-mailak konpentsatzen du: dagokiona hurbil lortzen du.
+    expect(seatsOf('Alderdi Gorria')).toBeGreaterThan(10);
+    // Ganbera 75 barruti + 25 zerrenda = 100 (gehi overhang-a).
+    expect(container.querySelectorAll('svg circle').length).toBeGreaterThanOrEqual(100);
+  });
+
+  it('MMM-k EZ du konpentsatzen: hori da MMPrekiko aldea', () => {
+    render(<App />);
+
+    selectSystem('mmm');
+    const mmmSeats = seatsOf('Alderdi Gorria');
+
+    selectSystem('mmp');
+    const mmpSeats = seatsOf('Alderdi Gorria');
+
+    // Maila berberak, poltsa berbera — baina lotura egoteak dena aldatzen du.
+    expect(mmpSeats).toBeGreaterThan(mmmSeats * 2);
+  });
+
+  it('bi mailen taulak barrutiak, dagokiona eta zerrenda erakusten ditu', () => {
+    render(<App />);
+    selectSystem('mmp');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Bi mailak' }));
+    expect(screen.getByRole('columnheader', { name: 'Barrutiak' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Dagokiona' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Zerrenda' })).toBeInTheDocument();
+  });
+
+  it('zerrenda-poltsa txikitzeak overhang-a agerrarazten du', () => {
+    render(<App />);
+    selectSystem('mmp');
+
+    // Poltsa handiarekin ez dago overhang-ik.
+    fireEvent.change(screen.getByLabelText('Zerrenda-mailako eserlekuak'), {
+      target: { value: '150' },
+    });
+    expect(screen.queryByText(/overhang eserleku/i)).not.toBeInTheDocument();
+
+    // Poltsa txikituta, alderdiren batek dagokiona baino barruti gehiago irabazten ditu.
+    fireEvent.change(screen.getByLabelText('Zerrenda-mailako eserlekuak'), {
+      target: { value: '10' },
+    });
+    expect(screen.getAllByText(/overhang eserleku/i).length).toBeGreaterThan(0);
+  });
+
+  it('overhang-aren hiru erregelek ganbera desberdinak ematen dituzte', () => {
+    const { container } = render(<App />);
+    selectSystem('mmp');
+    fireEvent.change(screen.getByLabelText('Zerrenda-mailako eserlekuak'), {
+      target: { value: '25' },
+    });
+
+    const chamber = () => container.querySelectorAll('svg circle').length;
+    const rule = (value: string) =>
+      fireEvent.change(screen.getByLabelText('Overhang-aren erregela'), { target: { value } });
+
+    rule('fixed');
+    const fixed = chamber();
+    rule('keep');
+    const keep = chamber();
+    rule('leveling');
+    const leveling = chamber();
+
+    // Finkoak ez du hazten; mantentzeak apur bat; orekatzeak gehien.
+    expect(fixed).toBe(100);
+    expect(keep).toBeGreaterThan(fixed);
+    expect(leveling).toBeGreaterThan(keep);
+  });
+
+  it('bigarren botoa piztuta, editatzeko taula agertzen da', () => {
+    render(<App />);
+    selectSystem('mmp');
+
+    expect(screen.queryByText('Bigarren botoa (zerrenda)')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: /bigarren botoa/i }));
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Datuak' }));
+    expect(screen.getByText('Bigarren botoa (zerrenda)')).toBeInTheDocument();
+  });
+});
+
 describe('fitxak', () => {
   it('fitxa guztiak ireki daitezke erroririk gabe', () => {
     render(<App />);

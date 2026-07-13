@@ -31,6 +31,7 @@ export function DataEditor({ paint, result }: Props) {
     updateDistrict,
     setBlankVotes,
     setVotes,
+    setSecondVotes,
   } = useApp();
 
   const [focused, setFocused] = useState<string | null>(null);
@@ -294,6 +295,60 @@ export function DataEditor({ paint, result }: Props) {
           zure ezarpenaren arabera). Gorriz markatutakoak langak kanpoan utzitakoak dira.
         </p>
       </div>
+
+      {scenario.secondVotes && (
+        <div className="card">
+          <h3 style={{ marginBottom: 10 }}>Bigarren botoa (zerrenda)</h3>
+          <p className="hint" style={{ marginTop: 0 }}>
+            Goiko botoek <strong>barrutiko hautagaia</strong> aukeratzen dute; hauek{' '}
+            <strong>alderdi-zerrenda</strong>. Desberdinak izan daitezke: hautesle batek bere
+            barrutiko hautagai handiari bozka diezaioke eta zerrendan alderdi txiki bati. Boto banatu
+            hori da Alemaniako overhang-aren iturri nagusia.
+          </p>
+
+          <div className="scroll-x">
+            <table>
+              <thead>
+                <tr>
+                  <th>Barrutia</th>
+                  {scenario.parties.map((p) => (
+                    <th key={p.id} className="num" style={{ minWidth: 96 }}>
+                      <span className="party-cell" style={{ justifyContent: 'flex-end' }}>
+                        <span
+                          className="swatch"
+                          style={{ background: paint[p.id]?.fill }}
+                          aria-hidden
+                        />
+                        {p.abbrev}
+                      </span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleDistricts.map((d) => (
+                  <tr key={d.id}>
+                    <td>{d.name}</td>
+                    {scenario.parties.map((p) => (
+                      <td key={p.id}>
+                        <input
+                          type="number"
+                          min={0}
+                          value={scenario.secondVotes?.[d.id]?.[p.id] ?? 0}
+                          onChange={(e) =>
+                            setSecondVotes(d.id, p.id, Number(e.target.value) || 0)
+                          }
+                          aria-label={`${p.name} bigarren botoa ${d.name}n`}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

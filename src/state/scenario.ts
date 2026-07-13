@@ -25,6 +25,10 @@ interface AppState extends Snapshot {
   setMethod: (method: MethodId) => void;
   setThreshold: (patch: Partial<ThresholdConfig>) => void;
   setRunoff: (patch: Partial<SystemConfig['runoff']>) => void;
+  setMixed: (patch: Partial<SystemConfig['mixed']>) => void;
+  /** Bigarren botoa sortu (lehen botoaren kopia gisa), edo kendu. */
+  enableSecondVotes: (on: boolean) => void;
+  setSecondVotes: (districtId: string, partyId: PartyId, votes: number) => void;
   setTransfers: (patch: Partial<TransferConfig>) => void;
   /** Matrizeko gelaxka bat eskuz jarri (ehunekotan). */
   setTransferCell: (from: PartyId, to: PartyId, percent: number) => void;
@@ -112,6 +116,40 @@ export const useApp = create<AppState>((set, get) => {
     setRunoff: (patch) =>
       commit('runoff', (s) => ({
         config: { ...s.config, runoff: { ...s.config.runoff, ...patch } },
+      })),
+
+    setMixed: (patch) =>
+      commit('mixed', (s) => ({
+        config: { ...s.config, mixed: { ...s.config.mixed, ...patch } },
+      })),
+
+    enableSecondVotes: (on) =>
+      commit('second-votes', (s) => {
+        if (!on) {
+          const { secondVotes: _drop, ...rest } = s.scenario;
+          return { scenario: rest, config: { ...s.config, mixed: { ...s.config.mixed, ballot: 'same' } } };
+        }
+        // Lehen botoaren kopia bat da abiapuntua: hortik editatzen du erabiltzaileak boto banatua.
+        const secondVotes: Scenario['secondVotes'] = {};
+        for (const d of s.scenario.districts) secondVotes[d.id] = { ...s.scenario.votes[d.id] };
+        return {
+          scenario: { ...s.scenario, secondVotes },
+          config: { ...s.config, mixed: { ...s.config.mixed, ballot: 'second' } },
+        };
+      }),
+
+    setSecondVotes: (districtId, partyId, votes) =>
+      commit(`second:${districtId}:${partyId}`, (s) => ({
+        scenario: {
+          ...s.scenario,
+          secondVotes: {
+            ...s.scenario.secondVotes,
+            [districtId]: {
+              ...(s.scenario.secondVotes?.[districtId] ?? {}),
+              [partyId]: Math.max(0, votes),
+            },
+          },
+        },
       })),
 
     setTransfers: (patch) =>
