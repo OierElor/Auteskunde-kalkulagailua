@@ -138,7 +138,37 @@ export interface RunoffDetail {
   margin: number;
 }
 
-export type AllocationDetail = DivisorDetail | QuotaDetail | PluralityDetail | RunoffDetail;
+/** STV: erronda bakoitzean ekintza BAT gertatzen da — norbait hautatu edo norbait kanporatu. */
+export interface StvRound {
+  round: number;
+  /** hautagaia → botoak erronda honetan (transferentziak aplikatuta). */
+  counts: Record<string, number>;
+  /** Erronda honetan hautatua (kuota gainditu duelako). */
+  elected: string | null;
+  /** Erronda honetan kanporatua (inork ez du kuota lortu eta hau da azkena). */
+  eliminated: string | null;
+  transfers: { from: string; to: string; votes: number }[];
+  /** Metatutako boto agortuak: lehentasun gehiagorik gabe geratu direnak. */
+  exhausted: number;
+}
+
+export interface StvDetail {
+  kind: 'stv';
+  /** Droop: ⌊botoak / (eserlekuak+1)⌋ + 1. Hau da benetako langa — ez dago beste bat. */
+  quota: number;
+  totalVotes: number;
+  rounds: StvRound[];
+  /** Hautatutako hautagaiak, hautatze-ordenan. */
+  elected: string[];
+  exhausted: number;
+}
+
+export type AllocationDetail =
+  | DivisorDetail
+  | QuotaDetail
+  | PluralityDetail
+  | RunoffDetail
+  | StvDetail;
 
 /** Barruti bakarreko esleipen baten emaitza. */
 export interface DistrictAllocation {

@@ -3,8 +3,11 @@ import { runFPTP, runTwoRound } from './majoritarian';
 import type { RunoffOptions } from './majoritarian';
 import { runMixed } from './mixed';
 import type { MixedOptions, OverhangRule } from './mixed';
+import { runStv } from './stv';
 import { DEFAULT_TRANSFER_CONFIG } from '../transfers';
 import type { TransferConfig } from '../transfers';
+import { DEFAULT_CANDIDATE_CONFIG } from '../candidates';
+import type { CandidateConfig } from '../candidates';
 import type { ElectionResult, MethodId, Scenario, ThresholdConfig } from '../types';
 
 /**
@@ -19,10 +22,18 @@ export interface SystemSpec {
   name: string;
   description: string;
   available: boolean;
-  /** Banaketa-metodoa (D'Hondt…) eta langa erabiltzen dituen. Maioritarioek ez dute ez bata ez bestea. */
+  /**
+   * Banaketa-metodoa (D'Hondt…) eta legezko langa erabiltzen dituen.
+   *
+   * Maioritarioek ez dute bat ere: barrutia bera da langa. STVk ere ez: Droop kuota DA langa, eta
+   * hautagaiak ordenatzen ditu, ez alderdiak. Horregatik bi horiek `false` dute, oso desberdinak
+   * izan arren — bandera honek "metodoa eta langa erakutsi?" bakarrik esan nahi du.
+   */
   proportional: boolean;
   /** Bi maila ditu: barruti uninominalak + zerrenda-poltsa. */
   mixed?: boolean;
+  /** Boto ordenatuak: hautagai-mailakoa da, ez alderdi-mailakoa. */
+  ranked?: boolean;
 }
 
 export const SYSTEMS: SystemSpec[] = [
@@ -70,10 +81,12 @@ export const SYSTEMS: SystemSpec[] = [
   },
   {
     id: 'stv',
-    name: 'Boto ordenatua (STV/IRV)',
-    description: 'Droop kuota eta soberakinen transferentzia frakzionala.',
-    available: false,
-    proportional: true,
+    name: 'Boto ordenatua (STV / IRV)',
+    description:
+      'Hautagaiak lehiatzen dira, ez alderdiak. Droop kuota eta Gregory-ren soberakin-transferentzia. Eserleku bakarreko barrutietan IRV da. Irlanda, Malta, Australia.',
+    available: true,
+    proportional: false,
+    ranked: true,
   },
 ];
 
@@ -86,6 +99,7 @@ export interface SystemConfig {
   runoff: { rule: RunoffOptions['rule']; qualifyPercent: number };
   transfers: TransferConfig;
   mixed: { listSeats: number; overhang: OverhangRule; ballot: MixedOptions['ballot'] };
+  candidates: CandidateConfig;
 }
 
 export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
@@ -95,6 +109,7 @@ export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
   runoff: { rule: 'top-two', qualifyPercent: 12.5 },
   transfers: DEFAULT_TRANSFER_CONFIG,
   mixed: { listSeats: 25, overhang: 'keep', ballot: 'same' },
+  candidates: DEFAULT_CANDIDATE_CONFIG,
 };
 
 export function runSystem(scenario: Scenario, config: SystemConfig): ElectionResult {
@@ -113,10 +128,15 @@ export function runSystem(scenario: Scenario, config: SystemConfig): ElectionRes
         method: config.method,
         threshold: config.threshold,
       });
+    case 'stv':
+      return runStv(scenario, {
+        transfers: config.transfers,
+        candidates: config.candidates,
+      });
     default:
       throw new Error(`Sistema hau oraindik ez dago inplementatuta: ${config.system}`);
   }
 }
 
-export { runListPR, runFPTP, runTwoRound, runMixed };
+export { runListPR, runFPTP, runTwoRound, runMixed, runStv };
 export type { RunoffOptions, MixedOptions, OverhangRule };

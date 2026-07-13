@@ -26,6 +26,10 @@ interface AppState extends Snapshot {
   setThreshold: (patch: Partial<ThresholdConfig>) => void;
   setRunoff: (patch: Partial<SystemConfig['runoff']>) => void;
   setMixed: (patch: Partial<SystemConfig['mixed']>) => void;
+  setCandidates: (patch: Partial<SystemConfig['candidates']>) => void;
+  /** Hautagai baten lehentasun-botoak eskuz jarri. */
+  setPreference: (candidateId: string, votes: number) => void;
+  resetPreferences: () => void;
   /** Bigarren botoa sortu (lehen botoaren kopia gisa), edo kendu. */
   enableSecondVotes: (on: boolean) => void;
   setSecondVotes: (districtId: string, partyId: PartyId, votes: number) => void;
@@ -121,6 +125,33 @@ export const useApp = create<AppState>((set, get) => {
     setMixed: (patch) =>
       commit('mixed', (s) => ({
         config: { ...s.config, mixed: { ...s.config.mixed, ...patch } },
+      })),
+
+    setCandidates: (patch) =>
+      commit('candidates', (s) => ({
+        config: { ...s.config, candidates: { ...s.config.candidates, ...patch } },
+      })),
+
+    setPreference: (candidateId, votes) =>
+      commit(`preference:${candidateId}`, (s) => ({
+        config: {
+          ...s.config,
+          candidates: {
+            ...s.config.candidates,
+            preferences: {
+              ...s.config.candidates.preferences,
+              [candidateId]: Math.max(0, votes),
+            },
+          },
+        },
+      })),
+
+    resetPreferences: () =>
+      commit('reset-preferences', (s) => ({
+        config: {
+          ...s.config,
+          candidates: { ...s.config.candidates, preferences: {} },
+        },
       })),
 
     enableSecondVotes: (on) =>

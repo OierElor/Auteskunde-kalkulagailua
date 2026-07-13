@@ -67,7 +67,7 @@ export function ControlPanel() {
         </select>
         <p className="hint">{spec.description}</p>
 
-        {(!spec.proportional || spec.mixed) && !uninominal && (
+        {(!spec.proportional || spec.mixed) && !spec.ranked && !uninominal && (
           <div className="banner alert">
             <span aria-hidden>⚠</span>
             <div>
@@ -76,6 +76,22 @@ export function ControlPanel() {
               Kargatu <em>75 barruti uninominal</em> adibidea emaitza esanguratsua ikusteko.
             </div>
           </div>
+        )}
+
+        {spec.ranked && (
+          <p className="hint" style={{ margin: 0 }}>
+            {uninominal ? (
+              <>
+                Barruti guztiek eserleku bat dute: hau <strong>IRV</strong> da (kanporaketa
+                mailakatua), ez STV.
+              </>
+            ) : (
+              <>
+                Barrutiek eserleku bat baino gehiago dute: hau <strong>STV</strong> da. Benetako
+                STV-barrutiek 3–6 eserleku izaten dituzte.
+              </>
+            )}
+          </p>
         )}
       </div>
 
@@ -161,9 +177,19 @@ export function ControlPanel() {
         <div className="card stack">
           <h3>Langa eta metodoa</h3>
           <p className="hint" style={{ margin: 0 }}>
-            Sistema maioritarioek <strong>ez dute langarik ez banaketa-metodorik</strong>. Boto
-            gehien dituenak barrutia irabazten du, %2 baino ez badu ere. Barrutiaren tamaina bera da
-            langa —eta askoz gogorragoa.
+            {spec.ranked ? (
+              <>
+                STVk <strong>ez du langarik ez banaketa-metodorik</strong>: <strong>Droop kuota</strong>{' '}
+                da benetako langa, eta hautagaiak ordenatzen ditu, ez alderdiak. Boto-txartelak{' '}
+                <strong>Transferentziak</strong> fitxako matrizetik sortzen dira.
+              </>
+            ) : (
+              <>
+                Sistema maioritarioek <strong>ez dute langarik ez banaketa-metodorik</strong>. Boto
+                gehien dituenak barrutia irabazten du, %2 baino ez badu ere. Barrutiaren tamaina bera
+                da langa —eta askoz gogorragoa.
+              </>
+            )}
           </p>
         </div>
       )}

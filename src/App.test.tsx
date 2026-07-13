@@ -308,6 +308,92 @@ describe('sistema mistoak (3. fasea)', () => {
   });
 });
 
+describe('zerrenda irekiak eta STV (4. fasea)', () => {
+  const seatsOf = (name: string) =>
+    Number(
+      within(screen.getAllByText(name)[0].closest('tr')!).getAllByRole('cell')[3].textContent,
+    );
+
+  const selectSystem = (value: string) =>
+    fireEvent.change(screen.getByLabelText('Sistema elektorala'), { target: { value } });
+
+  it('zerrenda-motak ez du eserleku kopurua aldatzen, nor sartzen den baizik', () => {
+    render(<App />);
+
+    const before = DEFAULT_SCENARIO.parties.map((p) => seatsOf(p.name));
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Hautagaiak' }));
+    fireEvent.change(screen.getByLabelText('Zerrenda-mota'), { target: { value: 'open' } });
+
+    // Eserlekuak berdin-berdin: geruza honek NOR aldatzen du, ez ZENBAT.
+    expect(DEFAULT_SCENARIO.parties.map((p) => seatsOf(p.name))).toEqual(before);
+    // Baina hautagaien ordena aldatu da: norbait aurreratu da.
+    expect(screen.getAllByText('aurreratua').length).toBeGreaterThan(0);
+  });
+
+  it('zerrenda itxian ezin dira lehentasun-botoak editatu', () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Hautagaiak' }));
+
+    const input = screen.getAllByLabelText(/lehentasun-botoak$/i)[0];
+    expect(input).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText('Zerrenda-mota'), { target: { value: 'open' } });
+    expect(screen.getAllByLabelText(/lehentasun-botoak$/i)[0]).toBeEnabled();
+  });
+
+  it('STV: Droop kuota erakusten du eta erronda-erronda kontatzen du', () => {
+    render(<App />);
+    selectSystem('stv');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Erronda-erronda' }));
+    // "Droop kuota" alboko panelean ere agertzen da: hemen erronda-taula bilatzen dugu.
+    expect(screen.getByRole('columnheader', { name: 'Erronda' })).toBeInTheDocument();
+    expect(screen.getAllByText('hautatua').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('kanporatua').length).toBeGreaterThan(0);
+  });
+
+  it('STV-k eserleku guztiak esleitzen ditu', () => {
+    const { container } = render(<App />);
+    selectSystem('stv');
+    expect(container.querySelectorAll('svg circle')).toHaveLength(75);
+  });
+
+  it('STVk transferentzia-matrizea erabiltzen du: aldatuz gero, emaitza aldatzen da', () => {
+    useApp.setState({ scenario: SINGLE_MEMBER_SCENARIO });
+    render(<App />);
+    selectSystem('stv');
+
+    const before = SINGLE_MEMBER_SCENARIO.parties.map((p) => seatsOf(p.name));
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Transferentziak' }));
+    fireEvent.change(screen.getByLabelText('Abstentzio lehenetsia'), { target: { value: '90' } });
+
+    expect(SINGLE_MEMBER_SCENARIO.parties.map((p) => seatsOf(p.name))).not.toEqual(before);
+  });
+
+  it('STVn langa eta metodoa desagertzen dira: Droop kuota da langa', () => {
+    render(<App />);
+    selectSystem('stv');
+
+    expect(screen.queryByLabelText('Banaketa-metodoa')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Langaren ehunekoa')).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Droop kuota/i).length).toBeGreaterThan(0);
+  });
+
+  it('barruti uninominaletan STV IRV dela dio, ez STV', () => {
+    useApp.setState({ scenario: SINGLE_MEMBER_SCENARIO });
+    render(<App />);
+    selectSystem('stv');
+
+    // Testua elementutan zatituta dago (<strong>IRV</strong>), beraz edukiontziaren testua begiratzen dugu.
+    const note = screen
+      .getAllByText(/kanporaketa\s*mailakatua/i)[0]
+      .closest('p');
+    expect(note!.textContent).toMatch(/IRV/);
+  });
+});
+
 describe('fitxak', () => {
   it('fitxa guztiak ireki daitezke erroririk gabe', () => {
     render(<App />);

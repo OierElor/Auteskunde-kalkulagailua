@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { computeIndices } from './core/indices';
 import { runSystem, systemSpec } from './core/systems';
 import { useApp } from './state/scenario';
+import { CandidatesPanel } from './ui/CandidatesPanel';
 import { ComparisonTable } from './ui/ComparisonTable';
 import { ControlPanel } from './ui/ControlPanel';
 import { CoalitionBuilder } from './ui/CoalitionBuilder';
@@ -13,10 +14,18 @@ import { IndicesPanel } from './ui/IndicesPanel';
 import { MixedTierPanel } from './ui/MixedTierPanel';
 import { QuotientTable } from './ui/QuotientTable';
 import { ResultsTable } from './ui/ResultsTable';
+import { StvRounds } from './ui/StvRounds';
 import { TransferMatrix } from './ui/TransferMatrix';
 import { usePartyPaint, useTheme } from './ui/theme';
 
-type Tab = 'datuak' | 'banaketa' | 'transferentziak' | 'indizeak' | 'konparaketa' | 'csv';
+type Tab =
+  | 'datuak'
+  | 'banaketa'
+  | 'hautagaiak'
+  | 'transferentziak'
+  | 'indizeak'
+  | 'konparaketa'
+  | 'csv';
 
 export default function App() {
   const [theme, toggleTheme] = useTheme();
@@ -31,17 +40,30 @@ export default function App() {
   const result = useMemo(() => runSystem(scenario, config), [scenario, config]);
   const indices = useMemo(() => computeIndices(scenario, result), [scenario, result]);
 
+  // STVk eta bi itzulik transferentzia-matrize BERBERA erabiltzen dute boto-txartelak sortzeko.
+  const usesTransfers = config.system === 'two-round' || config.system === 'stv';
+
   const tabs: { id: Tab; label: string }[] = [
     { id: 'datuak', label: 'Datuak' },
     {
       id: 'banaketa',
-      label: spec.mixed ? 'Bi mailak' : spec.proportional ? 'Nola banatu diren' : 'Barrutiak',
+      label: spec.ranked
+        ? 'Erronda-erronda'
+        : spec.mixed
+          ? 'Bi mailak'
+          : spec.proportional
+            ? 'Nola banatu diren'
+            : 'Barrutiak',
     },
-    ...(config.system === 'two-round'
-      ? [{ id: 'transferentziak' as Tab, label: 'Transferentziak' }]
-      : []),
+    // Zerrenda irekiak sistema proportzionaletan bakarrik dute zentzua: STVk berak ordenatzen ditu
+    // hautagaiak, eta sistema maioritarioetan ez dago zerrendarik.
+    ...(spec.proportional ? [{ id: 'hautagaiak' as Tab, label: 'Hautagaiak' }] : []),
+    ...(usesTransfers ? [{ id: 'transferentziak' as Tab, label: 'Transferentziak' }] : []),
     { id: 'indizeak', label: 'Proportzionaltasuna' },
-    { id: 'konparaketa', label: spec.proportional ? 'Metodoen konparaketa' : 'Sistemen konparaketa' },
+    {
+      id: 'konparaketa',
+      label: config.system === 'list-pr' ? 'Metodoen konparaketa' : 'Sistemen konparaketa',
+    },
     { id: 'csv', label: 'CSV' },
   ];
 
@@ -142,7 +164,9 @@ export default function App() {
               {activeTab === 'datuak' && <DataEditor paint={paint} result={result} />}
 
               {activeTab === 'banaketa' &&
-                (spec.mixed ? (
+                (spec.ranked ? (
+                  <StvRounds scenario={scenario} result={result} paint={paint} />
+                ) : spec.mixed ? (
                   <div className="stack" style={{ gap: 16 }}>
                     <MixedTierPanel parties={scenario.parties} result={result} paint={paint} />
                     <DistrictResults scenario={scenario} result={result} paint={paint} />
@@ -152,6 +176,10 @@ export default function App() {
                 ) : (
                   <DistrictResults scenario={scenario} result={result} paint={paint} />
                 ))}
+
+              {activeTab === 'hautagaiak' && (
+                <CandidatesPanel scenario={scenario} result={result} paint={paint} />
+              )}
 
               {activeTab === 'transferentziak' && <TransferMatrix paint={paint} />}
 

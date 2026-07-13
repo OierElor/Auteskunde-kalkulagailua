@@ -13,7 +13,8 @@ npm run build    # dist/ karpeta estatikoa
 ## Zer egin dezakezu
 
 - **Sistema elektorala** aldatu: zerrenda proportzionala, **FPTP**, **bi itzuli**, **MMM** (mistoa
-  paraleloa) edo **MMP** (mistoa konpentsatzailea, overhang-arekin).
+  paraleloa), **MMP** (mistoa konpentsatzailea, overhang-arekin) edo **STV/IRV** (boto ordenatua).
+- **Zerrenda-mota** aldatu: itxia, irekia edo malgua — nor sartzen den erabakitzen du.
 - **Alderdiak** gehitu, kendu, berrizendatu, kolorez aldatu eta ezker-eskuin ardatzean kokatu.
 - **Eserlekuak** igo eta jaitsi, guztira edo barrutika.
 - **Barrera elektorala** mugitu (%0–15), barrutika edo estatu mailan, boto zuriak izendatzailean
@@ -69,6 +70,39 @@ Alderdi batek dagokiona baino barruti **gehiago** irabaz ditzake. Eserlekuak ezi
 
 Zerrenda-poltsa txikitu eta overhang-a agertzen ikusiko duzu.
 
+## STV: proportzionaltasuna NONDIK datorren
+
+STVn hautagaiak lehiatzen dira, ez alderdiak, eta hautesleak ordenatu egiten ditu. Droop kuota da
+langa; ez dago beste bat. Boto-txartel ordenatuak ez daudenez, **bi itzuliko matrize berberetik**
+sortzen dira.
+
+Emaitzak gauza bat argi uzten du, sarritan gaizki ulertzen dena:
+
+| | Barrutiak | Gallagher |
+|---|---|---|
+| FPTP | 75 × 1 eserleku | 17,6 |
+| **IRV** | 75 × 1 eserleku | **17,5** |
+| D'Hondt | 3 × 25 eserleku | 2,2 |
+| **STV** | 3 × 25 eserleku | **2,3** |
+
+**Boto ordenatuak berak ez dakar proportzionaltasunik.** Eserleku bakarreko barrutian IRV sistema
+*maioritarioa* da, FPTP bezain desproportzionala — nor irabazten duen aldatzen du, ez zenbat.
+STVren proportzionaltasuna **barrutiaren tamainatik** dator. Bi probak zaintzen dute hori.
+
+## Zerrenda irekiak: nor, ez zenbat
+
+Zerrenda-motak alderdiaren eserleku **kopurua ez du aldatzen** — hautagaien **ordena** baizik.
+Geruza bat da, edozein sistema proportzionalen gainean doana.
+
+| Modua | Nork erabakitzen du |
+|---|---|
+| **Itxia** | Alderdiak: zerrendako ordena |
+| **Irekia** | Hautesleak: lehentasun-boto gehien dutenak (Finlandia, Brasil) |
+| **Malgua** | Erdibidea: kuota gainditzen dutenak aurreratzen dira (Herbehereak) |
+
+Hautagaiak eta lehentasun-botoak **eszenatokitik ondorioztatzen dira** modu deterministan (hazi
+finkoarekin), ez dira gordetzen. Erabiltzaileak edita ditzake; gainidazketak bakarrik gordetzen dira.
+
 ## Arkitektura
 
 `src/core/` **UI-rik gabeko TypeScript hutsa da**, funtzio puruz osatua eta guztiz probatua.
@@ -83,7 +117,9 @@ du, eta begiz ezin da antzeman. Probak dira sare bakarra.
 | `core/systems/listPR.ts` | Zerrenda proportzionala, barruti anitzekoa. |
 | `core/systems/majoritarian.ts` | FPTP eta bi itzuli. `pluralityDistricts()` sistema mistoek berrerabiltzen dute. |
 | `core/systems/mixed.ts` | MMM eta MMP, overhang-aren hiru erregelekin. |
-| `core/transfers.ts` | Boto-transferentzien matrizea (bi itzulia; gero STV). |
+| `core/systems/stv.ts` | STV eta IRV: Droop kuota, Gregory-ren transferentzia frakzionala. |
+| `core/candidates.ts` | Hautagaiak eta zerrenda-motak (itxia/irekia/malgua). |
+| `core/transfers.ts` | Boto-transferentzien matrizea. **Bi itzulik eta STVk berbera erabiltzen dute.** |
 | `core/indices.ts` · `core/coalitions.ts` | Neurriak eta koalizioak. |
 | `core/hemicycle.ts` | Hemizikloaren geometria (funtzio purua, probatua). |
 | `core/color.ts` | OKLCH: alderdien koloreak gai argira eta ilunera egokitzen ditu. |
@@ -117,8 +153,13 @@ zuritzat hartzen da, ez alderdi gisa.
 
 ## Egoera
 
-- **1. fasea osatuta**: barruti anitzeko zerrenda proportzionala, metodo guztiekin.
-- **2. fasea osatuta**: sistema maioritarioak (FPTP eta bi itzuli, transferentzia-matrizearekin).
-- **3. fasea osatuta**: sistema mistoak (MMM eta MMP, overhang-aren hiru erregelekin, boto banatua).
+Lau faseak osatuta. Sei sistema elektoral, hamar banaketa-metodo, hiru zerrenda-mota.
 
-Hurrengoa: zerrenda irekiak eta boto ordenatua (STV, IRV).
+| Fasea | Zer |
+|---|---|
+| 1 | Barruti anitzeko zerrenda proportzionala, metodo guztiekin, hemizikloa, koalizioak, indizeak, CSV |
+| 2 | Sistema maioritarioak: FPTP eta bi itzuli, transferentzia-matrizearekin |
+| 3 | Sistema mistoak: MMM eta MMP, overhang-aren hiru erregelekin, boto banatua |
+| 4 | Zerrenda irekiak eta boto ordenatua: STV eta IRV |
+
+**188 proba**, motorraren zati bakoitza eta UI-aren muntaia estaltzen dituztenak.
