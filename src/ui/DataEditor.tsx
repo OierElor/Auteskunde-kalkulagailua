@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { districtValidVotes } from '../core/threshold';
 import type { ElectionResult, PartyId } from '../core/types';
 import { useApp } from '../state/scenario';
+import { DistrictManager } from './DistrictManager';
 import { formatInt, formatPercent } from './theme';
 import type { PartyPaint } from './theme';
 
@@ -11,11 +12,15 @@ interface Props {
 }
 
 /**
- * Barruti gehiago badago, banan-banan editatzen da.
+ * Datuen editorea, HIRU ataletan: alderdiak · barrutiak · botoak.
  *
- * Bi arrazoi: 75 barrutiko sareta batek 675 sarrera-eremu marraztuko lituzke —inork ez du hori
- * editatzen— eta graduatzaile bat mugitzean guztiak birmarraztu behar dira (~100 ms mugimenduko).
- * Barruti bat aukeratuta, biak konpontzen dira.
+ * Lehen barrutien kudeaketa eta boto-matrizea gauza bera ziren, eta horrek ezinezko egiten zuen
+ * 75 barruti kudeatzea. Orain bereizita daude: `DistrictManager`-ek zerrenda osoa erakusten du
+ * (arina, kontrol-laukiekin eta bateratzeko botoiekin), eta hemen hautatutako barrutiaren botoak
+ * editatzen dira.
+ *
+ * Boto-matrizeak 12 barrutiko muga mantentzen du: 75 barrutiko saretak 675 sarrera-eremu marraztuko
+ * lituzke, eta graduatzaile bat mugitzean guztiak birmarraztu (~100 ms mugimenduko).
  */
 const COMPACT_ABOVE = 12;
 
@@ -26,7 +31,6 @@ export function DataEditor({ paint, result }: Props) {
     addParty,
     removeParty,
     updateParty,
-    addDistrict,
     removeDistrict,
     updateDistrict,
     setBlankVotes,
@@ -37,7 +41,9 @@ export function DataEditor({ paint, result }: Props) {
   const [focused, setFocused] = useState<string | null>(null);
 
   const compact = scenario.districts.length > COMPACT_ABOVE;
-  const selectedId = focused ?? scenario.districts[0]?.id;
+  // Bateratu ondoren hautatutako barrutia desagertu daiteke: lehenengora itzuli.
+  const exists = focused && scenario.districts.some((d) => d.id === focused);
+  const selectedId = (exists ? focused : null) ?? scenario.districts[0]?.id;
   const visibleDistricts = compact
     ? scenario.districts.filter((d) => d.id === selectedId)
     : scenario.districts;
@@ -130,32 +136,25 @@ export function DataEditor({ paint, result }: Props) {
         </div>
       </div>
 
+      <DistrictManager focusedId={selectedId} onFocus={setFocused} />
+
       <div className="card">
         <div className="spread" style={{ marginBottom: 10 }}>
-          <h3>Barrutiak eta botoak</h3>
-          <div className="row">
+          <h3>
+            Botoak
             {compact && (
-              <select
-                value={selectedId}
-                onChange={(e) => setFocused(e.target.value)}
-                style={{ width: 'auto' }}
-                aria-label="Editatzeko barrutia"
-              >
-                {scenario.districts.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
+              <span style={{ textTransform: 'none', fontWeight: 400, color: 'var(--ink)' }}>
+                {' '}
+                — {scenario.districts.find((d) => d.id === selectedId)?.name}
+              </span>
             )}
-            <button onClick={addDistrict}>+ Barrutia gehitu</button>
-          </div>
+          </h3>
         </div>
 
         {compact && (
           <p className="hint" style={{ marginTop: 0 }}>
             {scenario.districts.length} barruti daude: banan-banan editatzen dira. Aukeratu bat goiko
-            zerrendan.
+            zerrendan klik eginda.
           </p>
         )}
 

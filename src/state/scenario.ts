@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import { csvToScenario } from '../core/csv';
+import {
+  mergeAll,
+  mergeByGroup,
+  mergeDistricts,
+  moveDistrict,
+  removeDistricts,
+} from '../core/districts';
 import { defaultColorForIndex } from '../core/palette';
+import { regionOf } from '../data/erkidegoak';
 import { DEFAULT_SYSTEM_CONFIG } from '../core/systems';
 import type { SystemConfig, SystemId } from '../core/systems';
 import { DEFAULT_TRANSFER_CONFIG, cellKey } from '../core/transfers';
@@ -50,6 +58,16 @@ interface AppState extends Snapshot {
   addDistrict: () => void;
   removeDistrict: (id: string) => void;
   updateDistrict: (id: string, patch: Partial<District>) => void;
+
+  /** Hautatutako barrutiak bakar batean bateratu (botoak, eserlekuak eta zuriak batuz). */
+  mergeSelected: (ids: string[], name?: string) => void;
+  /** Barruti guztiak bakar batean. */
+  mergeAllDistricts: () => void;
+  /** Kongresua: 52 probintzia → 19 autonomia erkidego. */
+  mergeByRegion: () => void;
+  /** Hainbat barruti batera ezabatu. Gutxienez bat geratzen da beti. */
+  removeSelected: (ids: string[]) => void;
+  moveDistrictBy: (id: string, delta: -1 | 1) => void;
   setBlankVotes: (districtId: string, votes: number) => void;
 
   setVotes: (districtId: string, partyId: PartyId, votes: number) => void;
@@ -312,6 +330,24 @@ export const useApp = create<AppState>((set, get) => {
           },
         };
       }),
+
+    // Barrutien eragiketak: motorreko funtzio puruak `commit`-etik pasatuta, Desegin/Berregin
+    // funtziona dezan. Logika ez dago hemen — `core/districts.ts`-en dago, probatuta.
+    mergeSelected: (ids, name) =>
+      commit('merge', (s) => ({ scenario: mergeDistricts(s.scenario, ids, name) })),
+
+    mergeAllDistricts: () => commit('merge-all', (s) => ({ scenario: mergeAll(s.scenario) })),
+
+    mergeByRegion: () =>
+      commit('merge-region', (s) => ({
+        scenario: mergeByGroup(s.scenario, (d) => regionOf(d.name)),
+      })),
+
+    removeSelected: (ids) =>
+      commit('remove-districts', (s) => ({ scenario: removeDistricts(s.scenario, ids) })),
+
+    moveDistrictBy: (id, delta) =>
+      commit(`move:${id}`, (s) => ({ scenario: moveDistrict(s.scenario, id, delta) })),
 
     updateDistrict: (id, patch) =>
       commit(`district:${id}:${Object.keys(patch).join(',')}`, (s) => ({

@@ -456,6 +456,101 @@ describe('eszenatokien hautatzailea', () => {
   });
 });
 
+describe('barrutien kudeaketa eta bateratzea', () => {
+  const seatsOf = (name: string) =>
+    Number(
+      within(screen.getAllByText(name)[0].closest('tr')!).getAllByRole('cell')[3].textContent,
+    );
+
+  const openData = () => fireEvent.click(screen.getByRole('tab', { name: 'Datuak' }));
+
+  it('KONGRESUA BATERATUTA: Vox 33 → 48, Sumar 31 → 48', () => {
+    // Hau da funtzio honen arrazoia. Lehen zenbaki hauek proba batean bakarrik zeuden, eskuz
+    // kalkulatuta. Orain erabiltzaileak klik batez lortzen ditu: boto berberak, 350 eserleku
+    // berberak, D'Hondt eta %3 berberak — barrutien tamaina da aldatzen den GAUZA BAKARRA.
+    render(<App />);
+    fireEvent.click(screen.getByRole('radio', { name: /Espainiako Kongresua 2023/ }));
+
+    expect(seatsOf('VOX (VOX)')).toBe(33);
+    expect(seatsOf('Sumar (SUMAR)')).toBe(31);
+
+    openData();
+    fireEvent.click(screen.getByRole('button', { name: /Bateratu DENAK/ }));
+
+    expect(seatsOf('VOX (VOX)')).toBe(48);
+    expect(seatsOf('Sumar (SUMAR)')).toBe(48);
+
+    // Eta alderdi eskualdekoak desagertu egiten dira: %3ko langa nazionala bihurtu da.
+    expect(seatsOf('Euskal Herria Bildu (EH Bildu)')).toBe(0);
+    expect(seatsOf('Esquerra Republicana de Catalunya (ERC)')).toBe(0);
+  });
+
+  it('erkidegoka bateratzeak 52 barruti 19 bihurtzen ditu, eserlekuak galdu gabe', () => {
+    const { container } = render(<App />);
+    fireEvent.click(screen.getByRole('radio', { name: /Espainiako Kongresua 2023/ }));
+    openData();
+
+    fireEvent.click(screen.getByRole('button', { name: /Bateratu autonomia erkidegoka/ }));
+
+    expect(screen.getByRole('heading', { name: /^Barrutiak \(19\)$/ })).toBeInTheDocument();
+    expect(container.querySelectorAll('svg circle')).toHaveLength(350);
+
+    // Erkidegoka, alderdi eskualdekoek beren eserlekuak MANTENTZEN dituzte (bakarrean galtzen
+    // dituzten bitartean): beren erkidegoan %3a gainditzen dute.
+    expect(seatsOf('Euskal Herria Bildu (EH Bildu)')).toBeGreaterThan(0);
+  });
+
+  it('erkidegoen botoia Kongresuan bakarrik agertzen da', () => {
+    render(<App />);
+    openData();
+    expect(screen.queryByRole('button', { name: /erkidegoka/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('radio', { name: /Espainiako Kongresua 2023/ }));
+    openData();
+    expect(screen.getByRole('button', { name: /erkidegoka/ })).toBeInTheDocument();
+  });
+
+  it('hautatutako barrutiak bateratzen ditu, eta Desegin-ek atzera botatzen du', () => {
+    const { container } = render(<App />);
+    openData();
+
+    // Eusko Legebiltzarraren egitura: Araba, Bizkaia, Gipuzkoa (25 + 25 + 25).
+    fireEvent.click(screen.getByRole('checkbox', { name: /Araba hautatu/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Bizkaia hautatu/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Bateratu hautatutakoak/ }));
+
+    expect(screen.getByRole('heading', { name: /^Barrutiak \(2\)$/ })).toBeInTheDocument();
+    expect(screen.getByText('Araba + Bizkaia')).toBeInTheDocument();
+    // Eserlekuak ez dira galtzen: 25 + 25 = 50, gehi Gipuzkoako 25 = 75.
+    expect(container.querySelectorAll('svg circle')).toHaveLength(75);
+
+    fireEvent.click(screen.getByRole('button', { name: /Desegin/ }));
+    expect(screen.getByRole('heading', { name: /^Barrutiak \(3\)$/ })).toBeInTheDocument();
+  });
+
+  it('hainbat barruti batera ezabatzen ditu', () => {
+    render(<App />);
+    openData();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Araba hautatu/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Bizkaia hautatu/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Ezabatu/ }));
+
+    expect(screen.getByRole('heading', { name: /^Barrutiak \(1\)$/ })).toBeInTheDocument();
+  });
+
+  it('75 barruti dituen eszenatokia zerrendan ikusten da (lehen goitibehera bat zen)', () => {
+    useApp.setState({ scenario: SINGLE_MEMBER_SCENARIO });
+    render(<App />);
+    openData();
+
+    expect(screen.getByRole('heading', { name: /^Barrutiak \(75\)$/ })).toBeInTheDocument();
+    // Zerrenda osoa dago, ez barruti bakarra.
+    expect(screen.getByText('1. barrutia')).toBeInTheDocument();
+    expect(screen.getByText('75. barrutia')).toBeInTheDocument();
+  });
+});
+
 describe('fitxak', () => {
   it('fitxa guztiak ireki daitezke erroririk gabe', () => {
     render(<App />);

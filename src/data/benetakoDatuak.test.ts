@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { csvToScenario } from '../core/csv';
+import { mergeAll } from '../core/districts';
 import { computeIndices } from '../core/indices';
 import { runListPR } from '../core/systems/listPR';
 import type { ThresholdConfig } from '../core/types';
@@ -168,22 +169,9 @@ describe('zer erakusten duten datu hauek', () => {
   it('Kongresua barruti bakarrean: boto berberak, legebiltzar oso bestelakoa', () => {
     const { scenario, result } = dhondt('espainiako-kongresua-2023.csv', 3);
 
-    // Boto guztiak batu eta 350 eserleku barruti BAKAR batean banatu — beste ezer aldatu gabe.
-    const votes: typeof scenario.votes = { espainia: {} };
-    for (const party of scenario.parties) {
-      votes.espainia[party.id] = scenario.districts.reduce(
-        (sum, d) => sum + (scenario.votes[d.id]?.[party.id] ?? 0),
-        0,
-      );
-    }
-    const single = {
-      ...scenario,
-      districts: [{ id: 'espainia', name: 'Espainia', seats: 350 }],
-      votes,
-      blankVotes: {
-        espainia: scenario.districts.reduce((sum, d) => sum + scenario.blankVotes[d.id], 0),
-      },
-    };
+    // `mergeAll` erabiltzen dugu — aplikazioan botoi bat da orain, eta hemen bere kontratua
+    // (botoak batu, ezer ez galdu) benetako datuen kontra probatzen da.
+    const single = mergeAll(scenario);
     const nationwide = runListPR(single, {
       method: 'dhondt',
       threshold: { percent: 3, scope: 'district', includeBlank: true },
