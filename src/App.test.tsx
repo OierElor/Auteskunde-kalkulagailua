@@ -394,6 +394,68 @@ describe('zerrenda irekiak eta STV (4. fasea)', () => {
   });
 });
 
+describe('eszenatokien hautatzailea', () => {
+  const seatsOf = (name: string) =>
+    Number(
+      within(screen.getAllByText(name)[0].closest('tr')!).getAllByRole('cell')[3].textContent,
+    );
+
+  it('ez du bikoizketarik: uneko eszenatokia behin bakarrik agertzen da', () => {
+    // Akats zaharra: goitibeherak `<option value="">{scenario.name}</option>` zuen, eta gero
+    // eszenatoki bera zerrendan errepikatzen zen.
+    render(<App />);
+    expect(screen.getAllByRole('radio', { name: /3 barruti × 25 eserleku/ })).toHaveLength(1);
+  });
+
+  it('eszenatoki bakoitzak bere azalpena erakusten du (lehen botatzen zen)', () => {
+    render(<App />);
+    // Hasierako eszenatokiaren azalpena ikusgai dago, klik egin gabe.
+    expect(screen.getByText(/BEREZKO langa ~%3,8 da/)).toBeInTheDocument();
+
+    // Eta talde-goiburuak esperimentua azaltzen du.
+    expect(screen.getByText(/Boto BERBERAK, 75 eserleku/)).toBeInTheDocument();
+  });
+
+  it('hauteskunde erreal batek EMAITZA OFIZIALA ematen du klik bakar batez', () => {
+    // Hau da benetan inporta duena. Lehen, eszenatokiak bere arau legalak ez zekartzanez, Eusko
+    // Legebiltzarra kargatuta zure uneko langarekin kalkulatuko luke — eta emaitza ez litzateke
+    // ofiziala izango, jakin gabe zergatik.
+    render(<App />);
+    fireEvent.click(screen.getByRole('radio', { name: /Eusko Legebiltzarra 2024/ }));
+
+    expect(seatsOf('EAJ-PNV')).toBe(27);
+    expect(seatsOf('EH BILDU')).toBe(27);
+    expect(seatsOf('PSE-EE/PSOE')).toBe(12);
+    expect(seatsOf('PP')).toBe(7);
+    expect(seatsOf('SUMAR')).toBe(1);
+    expect(seatsOf('VOX')).toBe(1);
+  });
+
+  it('Europako Parlamentuak langarik gabe kargatzen du (bere legea)', () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('radio', { name: /Europako Parlamentua 2024/ }));
+
+    // Ez da %3 — Espainiako Europako hauteskundeek ez dute langarik.
+    expect((screen.getByLabelText('Langaren ehunekoa') as HTMLInputElement).value).toBe('0');
+  });
+
+  it('Kongresua kargatzeak 52 barruti eta 350 eserleku dakartza', () => {
+    const { container } = render(<App />);
+    fireEvent.click(screen.getByRole('radio', { name: /Espainiako Kongresua 2023/ }));
+
+    expect(container.querySelectorAll('svg circle')).toHaveLength(350);
+    expect(seatsOf('Partido Popular (PP)')).toBe(137);
+  });
+
+  it('hautatutakoa nabarmenduta geratzen da', () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('radio', { name: /Nafarroako Parlamentua 2023/ }));
+
+    expect(screen.getByRole('radio', { name: /Nafarroako Parlamentua 2023/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /3 barruti × 25 eserleku/ })).not.toBeChecked();
+  });
+});
+
 describe('fitxak', () => {
   it('fitxa guztiak ireki daitezke erroririk gabe', () => {
     render(<App />);

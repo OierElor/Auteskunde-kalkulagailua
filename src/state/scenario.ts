@@ -18,6 +18,8 @@ interface AppState extends Snapshot {
   coalition: PartyId[];
   past: Snapshot[];
   future: Snapshot[];
+  /** Kargatuta dagoen adibidea, hautatzailean nabarmentzeko. CSV bat inportatuz gero, null. */
+  exampleId: string | null;
 
   loadExample: (id: string) => void;
   importCsv: (text: string) => void;
@@ -94,13 +96,21 @@ export const useApp = create<AppState>((set, get) => {
     coalition: [],
     past: [],
     future: [],
+    exampleId: 'hiru-barruti',
 
     loadExample: (id) => {
       const example = EXAMPLES.find((e) => e.id === id);
       if (!example) return;
       lastTag = null;
-      commit(`example:${id}`, () => ({ scenario: example.scenario }));
-      set({ coalition: [] });
+
+      // Eszenatokiak BERE ARAU LEGALAK dakartza. Hori gabe, Eusko Legebiltzarra kargatuta zure
+      // uneko langarekin kalkulatuko luke eta emaitza ez litzateke ofiziala — jakin gabe zergatik.
+      // Gero eskuz alda ditzakezu: horixe da tresnaren funtsa.
+      commit(`example:${id}`, (s) => ({
+        scenario: example.scenario,
+        config: { ...s.config, ...example.config },
+      }));
+      set({ coalition: [], exampleId: id });
     },
 
     importCsv: (text) => {
@@ -112,7 +122,8 @@ export const useApp = create<AppState>((set, get) => {
       const scenario = applyKnownParties(csvToScenario(text, get().scenario));
       lastTag = null;
       commit('csv', () => ({ scenario }));
-      set({ coalition: [] });
+      // Jada ez da adibide bat: hautatzailean ez da ezer nabarmenduta geratzen.
+      set({ coalition: [], exampleId: null });
     },
 
     setSystem: (system) => commit('system', (s) => ({ config: { ...s.config, system } })),

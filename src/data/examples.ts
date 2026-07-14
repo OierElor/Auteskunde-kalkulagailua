@@ -1,4 +1,14 @@
+import { csvToScenario } from '../core/csv';
+import type { SystemConfig } from '../core/systems';
 import type { Party, Scenario } from '../core/types';
+import { applyKnownParties } from './knownParties';
+
+import legebiltzarra2024 from '../../datuak/eusko-legebiltzarra-2024.csv?raw';
+import legebiltzarra2020 from '../../datuak/eusko-legebiltzarra-2020.csv?raw';
+import legebiltzarra2016 from '../../datuak/eusko-legebiltzarra-2016.csv?raw';
+import kongresua2023 from '../../datuak/espainiako-kongresua-2023.csv?raw';
+import nafarroa2023 from '../../datuak/nafarroako-parlamentua-2023.csv?raw';
+import europakoa2024 from '../../datuak/europako-parlamentua-2024.csv?raw';
 
 /**
  * DATU SINTETIKOAK. Alderdiak asmatuak dira (koloreen izenak daramatzate, nahasterik egon ez dadin)
@@ -180,37 +190,162 @@ const barrutiUninominalak: Scenario = (() => {
   return { name: '75 barruti uninominal · FPTP', parties: PARTIES, districts, votes, blankVotes };
 })();
 
+// --- Hauteskunde errealak --------------------------------------------------
+//
+// `datuak/` karpetako CSV OFIZIALAK, aplikazioan bertan. Ez dago parseatzaile berririk: lehendik
+// dauden `csvToScenario` eta `applyKnownParties` erabiltzen dira, CSV fitxatik kargatzean bezalaxe.
+// 32 KB dira guztira.
+
+const realScenario = (csv: string, name: string): Scenario => ({
+  ...applyKnownParties(csvToScenario(csv)),
+  name,
+});
+
+/** Espainiako eta Euskadiko lege orokorra: D'Hondt, %3 barrutika, boto zuriak izendatzailean. */
+const SPANISH_RULES: Partial<SystemConfig> = {
+  system: 'list-pr',
+  method: 'dhondt',
+  threshold: { percent: 3, scope: 'district', includeBlank: true },
+};
+
+export type ExampleGroup = 'benetakoa' | 'magnitudea';
+
 export interface Example {
   id: string;
   label: string;
+  /** Bigarren lerroa zerrendan: "350 eserleku · 52 barruti". */
+  summary: string;
+  /** Zer erakusten duen. ORAIN BAI: hautatzailean erakusten da. */
   hint: string;
+  group: ExampleGroup;
   scenario: Scenario;
+  /**
+   * Hauteskundearen ARAU LEGALAK. Eszenatokiarekin batera aplikatzen dira: bestela Eusko
+   * Legebiltzarra kargatuta zure uneko langarekin kalkulatuko luke, eta emaitza ez litzateke
+   * ofiziala — jakin gabe zergatik.
+   */
+  config: Partial<SystemConfig>;
+  /** Datu errealetarako: iturri ofiziala. */
+  source?: string;
 }
 
 export const EXAMPLES: Example[] = [
+  // --- Benetako hauteskundeak ---------------------------------------------
+  {
+    id: 'legebiltzarra-2024',
+    label: 'Eusko Legebiltzarra 2024',
+    summary: '75 eserleku · 3 barruti',
+    hint: 'Emaitza ofiziala: EAJ-PNV 27, EH Bildu 27, PSE-EE 12, PP 7, Sumar 1, Vox 1. Probatu langa %5era igotzen, edo Sainte-Laguë metodora aldatzen.',
+    group: 'benetakoa',
+    scenario: realScenario(legebiltzarra2024, 'Eusko Legebiltzarra 2024'),
+    config: SPANISH_RULES,
+    source: 'Eusko Jaurlaritza — datu ofizialak',
+  },
+  {
+    id: 'legebiltzarra-2020',
+    label: 'Eusko Legebiltzarra 2020',
+    summary: '75 eserleku · 3 barruti',
+    hint: 'Emaitza ofiziala: EAJ-PNV 31, EH Bildu 21, PSE-EE 10, Elkarrekin Podemos 6, PP+Cs 6, Vox 1.',
+    group: 'benetakoa',
+    scenario: realScenario(legebiltzarra2020, 'Eusko Legebiltzarra 2020'),
+    config: SPANISH_RULES,
+    source: 'Eusko Jaurlaritza — datu ofizialak',
+  },
+  {
+    id: 'legebiltzarra-2016',
+    label: 'Eusko Legebiltzarra 2016',
+    summary: '75 eserleku · 3 barruti',
+    hint: 'Emaitza ofiziala: EAJ-PNV 28, EH Bildu 18, Podemos 11, PSE-EE 9, PP 9.',
+    group: 'benetakoa',
+    scenario: realScenario(legebiltzarra2016, 'Eusko Legebiltzarra 2016'),
+    config: SPANISH_RULES,
+    source: 'Eusko Jaurlaritza — datu ofizialak',
+  },
+  {
+    id: 'kongresua-2023',
+    label: 'Espainiako Kongresua 2023',
+    summary: '350 eserleku · 52 barruti',
+    hint: 'Hemen ikusten da barruti txikien eragina: Voxek 33 eserleku ditu eta Sumarrek 31. Boto berberekin BARRUTI BAKAR batean, 48 eta 48 lituzkete. Ez da langa — barrutien tamaina da.',
+    group: 'benetakoa',
+    scenario: realScenario(kongresua2023, 'Espainiako Kongresua 2023'),
+    config: SPANISH_RULES,
+    source: 'BOE — Junta Electoral Central',
+  },
+  {
+    id: 'nafarroa-2023',
+    label: 'Nafarroako Parlamentua 2023',
+    summary: '50 eserleku · barruti bakarra',
+    hint: 'Barruti bakarra denez, sistema oso proportzionala da (Gallagher 1,8). Konparatu Kongresuarekin (5,6): egitura bakarrik aldatzen da.',
+    group: 'benetakoa',
+    scenario: realScenario(nafarroa2023, 'Nafarroako Parlamentua 2023'),
+    config: SPANISH_RULES,
+    source: 'Nafarroako Gobernua — datu irekiak',
+  },
+  {
+    id: 'europakoa-2024',
+    label: 'Europako Parlamentua 2024',
+    summary: '61 eserleku · langarik EZ',
+    hint: 'Espainiak barruti bakarra du eta LANGARIK EZ: bederatzi hautagaitzak lortu zuten eserlekua. Igo langa %3ra eta ikusi zenbat desagertzen diren.',
+    group: 'benetakoa',
+    scenario: realScenario(europakoa2024, 'Europako Parlamentua 2024'),
+    config: {
+      system: 'list-pr',
+      method: 'dhondt',
+      threshold: { percent: 0, scope: 'district', includeBlank: true },
+    },
+    source: 'BOE — Junta Electoral Central',
+  },
+
+  // --- Barrutien tamainaren eragina ---------------------------------------
+  //
+  // LAU HAUEK ESPERIMENTU BAKARRA DIRA. Boto berberak, 75 eserleku, D'Hondt eta %3ko langa
+  // berberak. BARRUTI-EGITURA da aldatzen den GAUZA BAKARRA. Konfigurazio berbera daramate
+  // nahita: bestela ez litzateke esperimentu kontrolatu bat.
   {
     id: 'hiru-barruti',
-    label: 'Hiru barruti · 75 eserleku',
-    hint: 'Eusko Legebiltzarraren egitura. Hemen barrutiaren tamaina da benetako langa, ez legezkoa.',
+    label: '3 barruti × 25 eserleku',
+    summary: 'Eusko Legebiltzarraren egitura',
+    hint: 'Abiapuntua. Hemen legezko %3ko langak ia ez du ezer erabakitzen: 25 eserlekuko barruti batean D\'Hondt-en BEREZKO langa ~%3,8 da, altuagoa. Barrutiaren tamaina da benetako langa.',
+    group: 'magnitudea',
     scenario: hiruBarruti,
+    config: SPANISH_RULES,
   },
   {
     id: 'barruti-bakarra',
-    label: 'Barruti bakarra · 75 eserleku',
-    hint: 'Boto berberak. Orain legezko langak BAI du eragina: probatu boto zurien etengailua.',
+    label: '1 barruti × 75 eserleku',
+    summary: 'Barruti bakarra',
+    hint: 'Berezko langa ~%1,3ra jaisten da, eta orain legezko %3ak BAI du eragina. Probatu "boto zuriak izendatzailean" etengailua: Alderdi Laranjak bi eserleku galtzen ditu.',
+    group: 'magnitudea',
     scenario: barrutiBakarra,
+    config: SPANISH_RULES,
   },
   {
     id: 'barruti-txikiak',
-    label: '25 barruti txiki · 75 eserleku',
-    hint: '3 eserlekuko barrutiak. Langarik jarri gabe, alderdi txikiak desagertu egiten dira.',
+    label: '25 barruti × 3 eserleku',
+    summary: 'Barruti oso txikiak',
+    hint: 'Berezko langa ~%25era igotzen da inork ezarri gabe. Hiru alderdik DENA hartzen dute; beste hiruk zero. Gallagher 2,2tik 16,8ra.',
+    group: 'magnitudea',
     scenario: barrutiTxikiak,
+    config: SPANISH_RULES,
   },
   {
     id: 'uninominalak',
-    label: '75 barruti uninominal · FPTP',
-    hint: 'Boto nazional berberak, eserleku bakarreko barrutietan. Aukeratu FPTP edo bi itzuli sistema.',
+    label: '75 barruti × 1 eserleku',
+    summary: 'Barruti uninominalak',
+    hint: 'Muturra: eserleku bakarra barrutiko. Hemendik abiatu sistema maioritarioak (FPTP, bi itzuli), mistoak (MMM, MMP) eta STV probatzeko — denek barruti uninominalak behar dituzte.',
+    group: 'magnitudea',
     scenario: barrutiUninominalak,
+    config: SPANISH_RULES,
+  },
+];
+
+export const GROUPS: { id: ExampleGroup; label: string; note?: string }[] = [
+  { id: 'benetakoa', label: 'Benetako hauteskundeak' },
+  {
+    id: 'magnitudea',
+    label: 'Barrutien tamainaren eragina',
+    // Hau da lau eszenatokiak zentzuz betetzen dituen esaldia — falta zena.
+    note: 'Boto BERBERAK, 75 eserleku, D\'Hondt eta %3ko langa. Barruti-egitura da aldatzen den gauza bakarra.',
   },
 ];
 

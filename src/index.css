@@ -125,11 +125,21 @@ h3 {
   gap: 12px;
   position: sticky;
   top: var(--gap);
+  /* Eszenatokien zerrendak panela luzatzen du. `sticky` hutsarekin, leihoa baino altuagoa bada
+     beheko kontrolak ESKURAEZIN geratzen dira: goiko ertza itsatsita dago eta ez dago haietaraino
+     korritzerik. Panelak bere korritze-eremua behar du. */
+  max-height: calc(100vh - 2 * var(--gap));
+  overflow-y: auto;
+  /* Korritze-barrak txartelen ertza jan ez dezan. */
+  padding-right: 2px;
+  margin-right: -2px;
 }
 
 @media (max-width: 1000px) {
   .sidebar {
     position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 }
 

@@ -3,7 +3,7 @@ import { QUOTA_METHODS } from '../core/quotas';
 import { SYSTEMS, systemSpec } from '../core/systems';
 import type { DivisorMethodId, MethodId, QuotaMethodId } from '../core/types';
 import { useApp } from '../state/scenario';
-import { EXAMPLES } from '../data/examples';
+import { ScenarioPicker } from './ScenarioPicker';
 import { formatInt } from './theme';
 
 export function ControlPanel() {
@@ -17,7 +17,6 @@ export function ControlPanel() {
     setMixed,
     enableSecondVotes,
     scaleAllSeats,
-    loadExample,
   } = useApp();
 
   const totalSeats = scenario.districts.reduce((sum, d) => sum + d.seats, 0);
@@ -32,24 +31,7 @@ export function ControlPanel() {
 
   return (
     <>
-      <div className="card stack">
-        <h3>Eszenatokia</h3>
-        <select
-          value=""
-          onChange={(e) => e.target.value && loadExample(e.target.value)}
-          aria-label="Adibidea kargatu"
-        >
-          <option value="">{scenario.name}</option>
-          {EXAMPLES.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.label}
-            </option>
-          ))}
-        </select>
-        <p className="hint">
-          Datuak asmatuak dira. Zureak <strong>CSV</strong> fitxan karga ditzakezu.
-        </p>
-      </div>
+      <ScenarioPicker />
 
       <div className="card stack">
         <h3>Sistema elektorala</h3>
