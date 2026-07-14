@@ -10,6 +10,8 @@
   --axis: #c3c2b7;
   --border: rgba(11, 11, 11, 0.1);
   --hover: rgba(11, 11, 11, 0.04);
+  /* --hover gardenaren baliokide opakua (zutabe itsatsietarako). */
+  --hover-solid: #f3f3f1;
   --good: #0ca30c;
   --warning: #fab219;
   --critical: #d03b3b;
@@ -35,6 +37,7 @@
     --axis: #383835;
     --border: rgba(255, 255, 255, 0.1);
     --hover: rgba(255, 255, 255, 0.06);
+    --hover-solid: #252524;
     color-scheme: dark;
   }
 }
@@ -50,6 +53,7 @@
   --axis: #383835;
   --border: rgba(255, 255, 255, 0.1);
   --hover: rgba(255, 255, 255, 0.06);
+  --hover-solid: #252524;
   color-scheme: dark;
 }
 
@@ -353,6 +357,24 @@ tbody tr:hover {
 .scroll-x {
   overflow-x: auto;
   max-width: 100%;
+}
+
+/* Zutabe itsatsia: zatiduren taulak 130 zutabe izan ditzake ganbera handietan, eta korritzean
+   alderdien izenak galduta errenkadak ezin dira identifikatu. Atzealdea opakua izan behar da,
+   gainerako gelaxkak azpitik pasatzen baitira. */
+.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+  /* Mugak korritzen ari dela adierazten du. */
+  box-shadow: 1px 0 0 var(--grid);
+}
+
+/* `--hover` gardena da (rgba): zutabe itsatsian ez du balio, azpitiko gelaxkak ikusiko lirateke.
+   Horregatik dago `--hover-solid`: kolore bera, baina opakua. */
+tbody tr:hover .sticky-col {
+  background: var(--hover-solid);
 }
 
 /* Alderdiaren kolore-lauza: identitatea koloreak EZ du bakarrik garraiatzen — beti dago etiketa ondoan. */

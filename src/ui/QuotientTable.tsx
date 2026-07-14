@@ -18,6 +18,9 @@ interface Props {
  */
 export function QuotientTable({ scenario, result, paint }: Props) {
   const [districtId, setDistrictId] = useState(scenario.districts[0]?.id ?? '');
+  /** null = automatikoa (irabazitako eserlekuen arabera). Zenbaki bat = erabiltzaileak jarritakoa. */
+  const [columns, setColumns] = useState<number | null>(null);
+
   const district =
     scenario.districts.find((d) => d.id === districtId) ?? scenario.districts[0];
   const allocation =
@@ -33,7 +36,10 @@ export function QuotientTable({ scenario, result, paint }: Props) {
   const selector = (
     <select
       value={district.id}
-      onChange={(e) => setDistrictId(e.target.value)}
+      onChange={(e) => {
+        setDistrictId(e.target.value);
+        setColumns(null); // Barruti berriak bere zutabe-kopuru automatikoa merezi du.
+      }}
       style={{ width: 'auto' }}
       aria-label="Barrutia"
     >
@@ -120,13 +126,23 @@ export function QuotientTable({ scenario, result, paint }: Props) {
   const detail = allocation.detail;
   if (detail.kind !== 'divisor') return null;
 
+  // Zenbat zutabe erakutsi.
+  //
+  // Lehen 14tan finkatuta zegoen, eta horrek taula erabilgaitz egiten zuen ganbera handietan:
+  // 350 eserlekuko barruti batean PP-k 130 eserleku hartzen ditu, eta bere 130. zatidura ikusteko
+  // 130 zutabe behar dira. Orain irabazitako eserleku gehienetatik ondorioztatzen da (gehi hiru,
+  // hurrengo zatidurak ere ikusteko), eta erabiltzaileak alda dezake.
+  const maxAwarded = Math.max(0, ...eligible.map((p) => seats[p.id] ?? 0));
+  const autoColumns = Math.min(district.seats, Math.max(10, maxAwarded + 3));
+  const shown = Math.min(district.seats, columns ?? autoColumns);
+
   const grid = quotientGrid(
     Object.fromEntries(eligible.map((p) => [p.id, partyVotes(scenario, district.id, p.id)])),
     district.seats,
     detail.method,
     eligible.map((p) => p.id),
     seats,
-    Math.min(district.seats, 14),
+    shown,
   );
 
   // Zenbatgarren eserlekua eman duen zatidura bakoitzak: sareta irakurgarri egiten duena.
@@ -147,11 +163,40 @@ export function QuotientTable({ scenario, result, paint }: Props) {
         txikiak esleipenaren ordena adierazten du.
       </p>
 
+      <div className="row" style={{ gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+        <label htmlFor="zatitzaileak">Zatitzaileak:</label>
+        <input
+          id="zatitzaileak"
+          type="number"
+          min={1}
+          max={district.seats}
+          value={shown}
+          onChange={(e) =>
+            setColumns(Math.max(1, Math.min(district.seats, Number(e.target.value) || 1)))
+          }
+          style={{ width: 82 }}
+        />
+        <button
+          disabled={shown >= district.seats}
+          onClick={() => setColumns(district.seats)}
+          title="Barrutiaren eserleku guztiak: azken eserlekua eman duen zatidura arte"
+        >
+          Denak ({district.seats})
+        </button>
+        {columns !== null && (
+          <button className="ghost" onClick={() => setColumns(null)}>
+            Automatikoa ({autoColumns})
+          </button>
+        )}
+      </div>
+
       <div className="scroll-x">
         <table>
           <thead>
             <tr>
-              <th>Alderdia</th>
+              {/* Alderdiaren zutabea ITSATSITA: 130 zutaberekin, korritzean izenak galduta,
+                  errenkadak ezin dira identifikatu eta taula erabilezin bihurtzen da. */}
+              <th className="sticky-col">Alderdia</th>
               {grid[0]?.cells.map((c) => (
                 <th key={c.divisorIndex} className="num">
                   ÷{c.divisorIndex}
@@ -164,7 +209,7 @@ export function QuotientTable({ scenario, result, paint }: Props) {
               const party = scenario.parties.find((p) => p.id === row.partyId)!;
               return (
                 <tr key={row.partyId}>
-                  <td>
+                  <td className="sticky-col">
                     <span className="party-cell">
                       <span
                         className="swatch"

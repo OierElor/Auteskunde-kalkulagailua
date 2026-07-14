@@ -551,6 +551,62 @@ describe('barrutien kudeaketa eta bateratzea', () => {
   });
 });
 
+describe('zatiduren taula', () => {
+  const openTable = () => fireEvent.click(screen.getByRole('tab', { name: 'Nola banatu diren' }));
+  const divisors = () =>
+    screen.getAllByRole('columnheader').filter((h) => h.textContent?.startsWith('÷')).length;
+
+  it('zutabe kopurua irabazitako eserlekuetatik ondorioztatzen da, ez 14tan finkatuta', () => {
+    // Lehen `Math.min(district.seats, 14)` zegoen kodean finkatuta. 350 eserlekuko barruti batean
+    // PPk 130 eserleku hartzen ditu, eta bere 130. zatidura ikusteko 130 zutabe behar dira: taula
+    // erabilgaitza zen.
+    render(<App />); // 3 barruti × 25 eserleku; alderdirik handienak ~11 eserleku
+    openTable();
+
+    const automatic = divisors();
+    expect(automatic).toBeGreaterThan(10);
+    expect(automatic).toBeLessThanOrEqual(25); // barrutiaren eserlekuek mugatzen dute
+  });
+
+  it('"Denak" botoiak barrutiaren eserleku guztietaraino zabaltzen du', () => {
+    render(<App />);
+    openTable();
+
+    fireEvent.click(screen.getByRole('button', { name: /Denak \(25\)/ }));
+    expect(divisors()).toBe(25);
+  });
+
+  it('eskuz ere jar daiteke, eta automatikora itzul daiteke', () => {
+    render(<App />);
+    openTable();
+
+    fireEvent.change(screen.getByLabelText('Zatitzaileak:'), { target: { value: '20' } });
+    expect(divisors()).toBe(20);
+
+    fireEvent.click(screen.getByRole('button', { name: /Automatikoa/ }));
+    expect(divisors()).toBeLessThan(20);
+  });
+
+  it('ganbera handietan zutabe asko erakusten ditu (Kongresua bateratuta)', () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('radio', { name: /Espainiako Kongresua 2023/ }));
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Datuak' }));
+    fireEvent.click(screen.getByRole('button', { name: /Bateratu DENAK/ }));
+    openTable();
+
+    // PPk 130 eserleku ditu barruti bakarrean: zutabeek harago iritsi behar dute.
+    expect(divisors()).toBeGreaterThan(130);
+  });
+
+  it('alderdien zutabea ITSATSITA dago: 130 zutaberekin errenkadak identifikagarriak dira', () => {
+    const { container } = render(<App />);
+    openTable();
+    // Goiburua eta errenkada guztiak.
+    expect(container.querySelectorAll('.sticky-col').length).toBeGreaterThan(1);
+  });
+});
+
 describe('fitxak', () => {
   it('fitxa guztiak ireki daitezke erroririk gabe', () => {
     render(<App />);
